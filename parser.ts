@@ -22,6 +22,9 @@ export type Expr =
 			type: "error";
 	  }
 	| {
+			type: "sorry";
+	  }
+	| {
 			type: "ref";
 			index: number;
 	  }

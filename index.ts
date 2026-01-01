@@ -8,6 +8,13 @@ const defs: Defs = {};
 const error_ty = { type: "error" as const };
 defs.Type = { ty: error_ty, def: null };
 
+// (((Eq Nat) ((Nat.Add Nat.zero) (Nat.succ \1))) (Nat.succ ((Nat.Add Nat.zero) \1)))
+// (((Eq Nat) ((Nat.Add Nat.zero) (Nat.succ \2))) (Nat.succ ((Nat.Add Nat.zero) \2)))
+
+// For any type, SORRY `type` is a member of `type`
+// and SORRY <theorem> is a proof of <theorem>
+defs.SORRY = { ty: { type: "sorry" }, def: null };
+
 function type_of(defs: Defs, value: Expr, refs: Expr[] = []): Expr {
 	// the type of identifier is its type in defs
 	if (value.type === "ident") {
@@ -31,20 +38,57 @@ function type_of(defs: Defs, value: Expr, refs: Expr[] = []): Expr {
 		return { type: "ident", ident: "Type" };
 	} else if (value.type === "ref") {
 		// only lambda can introduce expressions to ref in type_of so no conflicts with pi
-		return refs[refs.length - value.index]!;
+		// however the ref could be referring to another ref
+		// in that case we add the ref indices (this is actual black magic)
+		const ref = refs[refs.length - value.index]!;
+		if (ref) {
+			// rename every subref in ref'd to itself + this ref's value.index
+			return update_refs(ref, value.index);
+		} else {
+			return value;
+		}
 	} else if (value.type === "application") {
 		// typeof(((a:Ty) => a) b) = apply(typeof(a), b)
 		const fun_ty = type_of(defs, value.fun, refs);
-		return apply(defs, fun_ty, value.value);
+		return apply_type(defs, fun_ty, value.value, refs);
 	} else {
 		throw new Error(`type_of: ${value.type}`);
 	}
 }
 
+function update_refs(value: Expr, inc: number): Expr {
+	if (value.type === "ref") {
+		return { type: "ref", index: value.index + inc };
+	} else if (value.type === "application") {
+		return {
+			type: "application",
+			fun: update_refs(value.fun, inc),
+			value: update_refs(value.value, inc),
+		};
+	} else if (value.type === "pi") {
+		return {
+			type: "pi",
+			head: update_refs(value.head, inc),
+			tail: update_refs(value.tail, inc),
+		};
+	} else {
+		return value;
+	}
+}
+
+// rules for replacing refs:
+// if the ref's index equals the depth, the value should have its refs combine with the tail's index
+// if the ref is less than the depth, it does not change
+// if the ref is greater than the depth, it refers outside, and must lose one index
 function replace(tail: Expr, value: Expr, depth = 1): Expr {
 	if (tail.type === "ref") {
 		if (tail.index === depth) {
-			return value;
+			return update_refs(value, tail.index - 1);
+		} else if (tail.index > depth) {
+			return {
+				type: "ref",
+				index: tail.index - 1,
+			};
 		} else {
 			return tail;
 		}
@@ -72,9 +116,9 @@ function replace(tail: Expr, value: Expr, depth = 1): Expr {
 
 function print_expr(expr: Expr): string {
 	if (expr.type === "lambda") {
-		return `λ: ${print_expr(expr.head)}. ${print_expr(expr.tail)}`;
+		return `(${print_expr(expr.head)} => ${print_expr(expr.tail)})`;
 	} else if (expr.type === "pi") {
-		return `Π: ${print_expr(expr.head)}. ${print_expr(expr.tail)}`;
+		return `(${print_expr(expr.head)} -> ${print_expr(expr.tail)})`;
 	} else if (expr.type === "application") {
 		return `(${print_expr(expr.fun)} ${print_expr(expr.value)})`;
 	} else if (expr.type === "ident") {
@@ -86,19 +130,49 @@ function print_expr(expr: Expr): string {
 	}
 }
 
-function apply(defs: Defs, fun: Expr, value: Expr): Expr {
+function simp_value(expr: Expr): Expr {
+	if (expr.type === "application") {
+		if (expr.fun.type === "lambda") {
+			return simp_value(replace(expr.fun.tail, simp_value(expr.value)));
+		} else {
+			return {
+				type: "application",
+				fun: simp_value(expr.fun),
+				value: simp_value(expr.value),
+			};
+		}
+	} else if (expr.type === "lambda") {
+		return {
+			type: "lambda",
+			head: simp_value(expr.head),
+			tail: simp_value(expr.tail),
+		};
+	} else if (expr.type === "pi") {
+		return {
+			type: "pi",
+			head: simp_value(expr.head),
+			tail: simp_value(expr.tail),
+		};
+	} else {
+		return expr;
+	}
+}
+
+function apply_type(defs: Defs, fun: Expr, value: Expr, refs: Expr[]): Expr {
 	if (fun.type === "pi") {
 		const head = fun.head;
-		if (!member_of(defs, value, head)) {
+		if (!member_of(defs, value, head, refs)) {
 			throw new Error(
 				`Type mismatch: ${print_expr(value)} has type ${print_expr(
-					type_of(defs, value)
+					type_of(defs, value, refs)
 				)}, which is not a member of ${print_expr(head)}`
 			);
 		}
 		// rewrite every ref in tail that references the head
 		const tail = fun.tail;
-		return replace(tail, value);
+		return simp_value(replace(tail, value));
+	} else if (fun.type === "sorry") {
+		return value;
 	} else {
 		throw new Error("don't know how to do this");
 	}
@@ -108,8 +182,13 @@ function apply(defs: Defs, fun: Expr, value: Expr): Expr {
 // Ordinarily we check if
 // type_of(expr) is a subset of ty
 // but this checker is extremely rudimentary so it only checks if they are equal
-function member_of(defs: Defs, expr: Expr, ty: Expr): boolean {
-	return deep_eq(type_of(defs, expr), ty);
+function member_of(
+	defs: Defs,
+	expr: Expr,
+	ty: Expr,
+	refs: Expr[] = []
+): boolean {
+	return deep_eq(type_of(defs, expr, refs), ty);
 }
 
 // Rename bound variables to use de Bruijn indices
@@ -208,11 +287,8 @@ function deep_eq(a: Expr, b: Expr): boolean {
 for (const stmt of ast) {
 	const ty = rename(defs, stmt.ty);
 	const def = stmt.def ? rename(defs, stmt.def) : null;
+
 	if (def) {
-		if (stmt.ident === "zero_add_implies_zero_add_succ") {
-			console.log("debugger");
-			
-		}
 		if (member_of(defs, def, ty)) {
 			console.log(`Proof '${stmt.ident}' passed`);
 		} else {
@@ -230,5 +306,3 @@ for (const stmt of ast) {
 		def,
 	};
 }
-
-write("./dump.json", JSON.stringify(defs, null, 2));
