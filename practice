@@ -99,8 +99,8 @@ zero_add : ( x : Nat ) -> Eq Nat (Nat.Add Nat.zero x) x :=
 // 1 + 1 = 2
 // Proof:
 // succ(0) + succ(0) = succ(1 + 0) (by Nat.add_succ)
-// 1 + 0 = 1 (by zero_add 1)
-// succ(1 + 0) = 2 (by Eq.congr)
+// 1 + 0 = 1 (by Nat.add_zero 1)
+// succ(1 + 0) = 2 (by Eq.congr (Nat.add_zero 1))
 // 1 + 1 = 2 (by Eq.trans)
 one_plus_one_eq_two : Eq Nat (Nat.Add 1 1) 2 :=
 	Eq.trans
