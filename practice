@@ -1,0 +1,119 @@
+Prop : Type;
+True : Prop;
+True.triv : True;
+False : Prop;
+
+Eq : (A : Type) -> A -> A -> Prop;
+Eq.refl : (A : Type) -> (x : A) -> Eq A x x;
+Eq.symm : (A : Type) -> (x : A) -> (y : A) -> Eq A x y -> Eq A y x;
+Eq.trans: (A : Type) -> (x : A) -> (y : A) -> (z : A) -> Eq A x y -> Eq A y z -> Eq A x z;
+Eq.congr: (A : Type) -> (B : Type) -> (f : A -> B) -> (a : A) -> (b : A) -> Eq A a b -> Eq B (f a) (f b);
+
+Nat : Type;
+Nat.zero : Nat;
+Nat.succ : Nat -> Nat;
+Nat.rec : ( P : Nat -> Prop ) -> P Nat.zero -> ( (n : Nat) -> P n -> P (Nat.succ n)) -> (n : Nat) -> P n;
+
+0 : Nat := Nat.zero;
+1 : Nat := Nat.succ 0;
+2 : Nat := Nat.succ (Nat.succ 0);
+
+Pair : (A: Type) -> (B: Type) -> (a: A) -> (b: B) -> Type;
+
+List : Type -> Type;
+List.nil : (El : Type) -> List El;
+List.cons : (El : Type) -> (head : El) -> (tail : List El) -> List El;
+
+List.Len : (El : Type) -> (list : List El) -> Nat;
+// Proof that len([]) = 0
+List.Len.nil : (El : Type) -> Eq (List El) (List.Len (List.nil El)) Nat.zero;
+// Proof that len([head, ...tail]) = succ(len(tail))
+List.Len.cons : (El : Type) -> (head: El) -> (tail : List El) ->
+	Eq (List El) (List.Len El (List.cons El head tail)) (Nat.succ (List.Len El tail));
+
+List.Join : (El : Type) -> (a : List El) -> (b : List El) -> List El;
+// Join([], a) = a
+List.Join.nil : (El : Type) -> (a : List El) ->
+	Eq (List El) (List.Join a List.nil) a;
+// Join([head, ...tail], a) = [head, ...Join(tail, a)]
+List.Join.cons : (El : Type) -> (head : El) -> (tail: List El) -> (a : List El) ->
+	Eq (List El) (List.Join El (List.cons El head tail) a) (List.cons El head (List.Join El tail a));
+
+Nat.Add : Nat -> Nat -> Nat;
+// forall x. x + 0 = x
+Nat.add_zero : (x : Nat) -> Eq Nat (Nat.Add x Nat.zero) x;
+// forall x y. x + succ y = 
+Nat.add_succ : (x : Nat) -> (y : Nat) -> Eq (Nat.Add x (Nat.succ y)) (Nat.succ (Nat.Add x y));
+
+// Practice
+// 0 = 0
+zero_eq_zero : Eq Nat Nat.zero Nat.zero := Eq.refl Nat Nat.zero;
+
+// 0 + 0 = 0
+zero_plus_zero_eq_zero : Eq Nat (Nat.Add Nat.zero Nat.zero) Nat.zero :=
+	Nat.add_zero Nat.zero;	
+
+// 0 + 0 + 0 = 0
+// PROOF
+// 0 + 0 + 0 = 0 + 0 (from Nat.add_zero (Nat.Add Nat.zero Nat.zero))
+// 0 + 0 = 0 (from zero_plus_zero_eq_zero)
+// 0 + 0 + 0 = 0 (from Eq.trans)
+zero_plus_zero_plus_zero_eq_zero : Eq Nat (Nat.Add (Nat.Add Nat.zero Nat.zero) Nat.zero) Nat.zero :=
+	Eq.trans
+		Nat
+		(Nat.Add (Nat.Add Nat.zero Nat.zero) Nat.zero)
+		(Nat.Add Nat.zero Nat.zero)
+		Nat.zero
+		(Nat.add_zero (Nat.Add Nat.zero Nat.zero))
+		zero_plus_zero_eq_zero;
+
+// forall x. 0 + x = x -> 0 + succ(x) = succ(x)
+// Proof:
+// Hypothesis: h : 0 + x = x
+// 0 + succ(x) = succ(0 + x) := Nat.add_succ 0
+// succ(0 + x) = succ(x) := Eq.congr h
+// 0 + succ(x) = succ(x) := Eq.trans (Nat.add_succ 0) (Eq.congr h)
+zero_add_implies_zero_add_succ : (x : Nat) -> Eq Nat (Nat.Add 0 x) x -> Eq Nat (Nat.Add 0 (Nat.succ x)) (Nat.succ x) :=
+	(x : Nat) => (h : Eq Nat (Nat.Add 0 x) x) =>
+	Eq.trans Nat
+		(Nat.Add 0 (Nat.succ x))
+		(Nat.succ (Nat.Add 0 x))
+		(Nat.succ x)	
+
+		(Nat.add_succ 0)
+		(Eq.congr Nat Nat Nat.succ
+			(Nat.Add 0 x)
+			x
+			h);
+
+// forall x. 0 + x = x
+// Proof by induction
+// Base case: 0 + 0 = 0
+// Proof: zero_plus_zero_eq_zero
+// Step case: 0 + x = x -> 0 + succ x = succ x
+// Proof: zero_add_implies_zero_add_succ
+
+zero_add : ( x : Nat ) -> Eq Nat (Add Nat.zero x) x :=
+	Nat.rec
+	( (x : Nat) => Eq Nat (Nat.Add Nat.zero x) x )
+	( add_zero Nat.zero )
+	zero_add_implies_zero_add_succ;
+
+
+
+// 1 + 1 = 2
+// Proof:
+// succ(0) + succ(0) = succ(0 + succ(0)) (by Nat.add_succ)
+// zero + succ(0) = succ(0) (by zero_add)
+// succ(0 + succ(0)) = succ(succ(0)) (by Eq.congr)
+// succ(0) + succ(0) = succ(0) + succ(0) (by Eq.trans)
+/*
+one_plus_one_eq_two : Eq Nat (Nat.Add 1 1) 2 :=
+	Eq.trans
+		Nat
+		Nat.Add 1 1
+		Nat.succ (Nat.Add 0 1)
+		2
+		(Nat.add_succ 1 0)
+		(Eq.congr Nat )
+*/

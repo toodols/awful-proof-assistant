@@ -1,0 +1,920 @@
+{
+  "Type": {
+    "ty": {
+      "type": "error"
+    },
+    "def": null
+  },
+  "Prop": {
+    "ty": {
+      "type": "ident",
+      "ident": "Type"
+    },
+    "def": null
+  },
+  "True": {
+    "ty": {
+      "type": "ident",
+      "ident": "Prop"
+    },
+    "def": null
+  },
+  "True.triv": {
+    "ty": {
+      "type": "ident",
+      "ident": "True"
+    },
+    "def": null
+  },
+  "False": {
+    "ty": {
+      "type": "ident",
+      "ident": "Prop"
+    },
+    "def": null
+  },
+  "Nat": {
+    "ty": {
+      "type": "ident",
+      "ident": "Type"
+    },
+    "def": null
+  },
+  "Nat.zero": {
+    "ty": {
+      "type": "ident",
+      "ident": "Nat"
+    },
+    "def": null
+  },
+  "Nat.succ": {
+    "ty": {
+      "type": "pi",
+      "head": {
+        "type": "ident",
+        "ident": "Nat"
+      },
+      "tail": {
+        "type": "ident",
+        "ident": "Nat"
+      }
+    },
+    "def": null
+  },
+  "Nat.rec": {
+    "ty": {
+      "type": "pi",
+      "head": {
+        "type": "pi",
+        "head": {
+          "type": "ident",
+          "ident": "Nat"
+        },
+        "tail": {
+          "type": "ident",
+          "ident": "Prop"
+        }
+      },
+      "tail": {
+        "type": "pi",
+        "head": {
+          "type": "application",
+          "fun": {
+            "type": "ref",
+            "index": 1
+          },
+          "value": {
+            "type": "ident",
+            "ident": "Nat.zero"
+          }
+        },
+        "tail": {
+          "type": "pi",
+          "head": {
+            "type": "pi",
+            "head": {
+              "type": "ident",
+              "ident": "Nat"
+            },
+            "tail": {
+              "type": "pi",
+              "head": {
+                "type": "application",
+                "fun": {
+                  "type": "ref",
+                  "index": 3
+                },
+                "value": {
+                  "type": "ref",
+                  "index": 1
+                }
+              },
+              "tail": {
+                "type": "application",
+                "fun": {
+                  "type": "ref",
+                  "index": 4
+                },
+                "value": {
+                  "type": "application",
+                  "fun": {
+                    "type": "ident",
+                    "ident": "Nat.succ"
+                  },
+                  "value": {
+                    "type": "ref",
+                    "index": 2
+                  }
+                }
+              }
+            }
+          },
+          "tail": {
+            "type": "pi",
+            "head": {
+              "type": "ident",
+              "ident": "Nat"
+            },
+            "tail": {
+              "type": "application",
+              "fun": {
+                "type": "ref",
+                "index": 4
+              },
+              "value": {
+                "type": "ref",
+                "index": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "def": null
+  },
+  "Eq": {
+    "ty": {
+      "type": "pi",
+      "head": {
+        "type": "ident",
+        "ident": "Type"
+      },
+      "tail": {
+        "type": "pi",
+        "head": {
+          "type": "ref",
+          "index": 1
+        },
+        "tail": {
+          "type": "pi",
+          "head": {
+            "type": "ref",
+            "index": 2
+          },
+          "tail": {
+            "type": "ident",
+            "ident": "Prop"
+          }
+        }
+      }
+    },
+    "def": null
+  },
+  "Eq.refl": {
+    "ty": {
+      "type": "pi",
+      "head": {
+        "type": "ident",
+        "ident": "Type"
+      },
+      "tail": {
+        "type": "pi",
+        "head": {
+          "type": "ref",
+          "index": 1
+        },
+        "tail": {
+          "type": "application",
+          "fun": {
+            "type": "application",
+            "fun": {
+              "type": "application",
+              "fun": {
+                "type": "ident",
+                "ident": "Eq"
+              },
+              "value": {
+                "type": "ref",
+                "index": 2
+              }
+            },
+            "value": {
+              "type": "ref",
+              "index": 1
+            }
+          },
+          "value": {
+            "type": "ref",
+            "index": 1
+          }
+        }
+      }
+    },
+    "def": null
+  },
+  "Eq.symm": {
+    "ty": {
+      "type": "pi",
+      "head": {
+        "type": "ident",
+        "ident": "Type"
+      },
+      "tail": {
+        "type": "pi",
+        "head": {
+          "type": "ref",
+          "index": 1
+        },
+        "tail": {
+          "type": "pi",
+          "head": {
+            "type": "ref",
+            "index": 2
+          },
+          "tail": {
+            "type": "pi",
+            "head": {
+              "type": "application",
+              "fun": {
+                "type": "application",
+                "fun": {
+                  "type": "application",
+                  "fun": {
+                    "type": "ident",
+                    "ident": "Eq"
+                  },
+                  "value": {
+                    "type": "ref",
+                    "index": 3
+                  }
+                },
+                "value": {
+                  "type": "ref",
+                  "index": 2
+                }
+              },
+              "value": {
+                "type": "ref",
+                "index": 1
+              }
+            },
+            "tail": {
+              "type": "application",
+              "fun": {
+                "type": "application",
+                "fun": {
+                  "type": "application",
+                  "fun": {
+                    "type": "ident",
+                    "ident": "Eq"
+                  },
+                  "value": {
+                    "type": "ref",
+                    "index": 4
+                  }
+                },
+                "value": {
+                  "type": "ref",
+                  "index": 2
+                }
+              },
+              "value": {
+                "type": "ref",
+                "index": 3
+              }
+            }
+          }
+        }
+      }
+    },
+    "def": null
+  },
+  "Eq.trans": {
+    "ty": {
+      "type": "pi",
+      "head": {
+        "type": "ident",
+        "ident": "Type"
+      },
+      "tail": {
+        "type": "pi",
+        "head": {
+          "type": "ref",
+          "index": 1
+        },
+        "tail": {
+          "type": "pi",
+          "head": {
+            "type": "ref",
+            "index": 2
+          },
+          "tail": {
+            "type": "pi",
+            "head": {
+              "type": "ref",
+              "index": 3
+            },
+            "tail": {
+              "type": "pi",
+              "head": {
+                "type": "application",
+                "fun": {
+                  "type": "application",
+                  "fun": {
+                    "type": "application",
+                    "fun": {
+                      "type": "ident",
+                      "ident": "Eq"
+                    },
+                    "value": {
+                      "type": "ref",
+                      "index": 4
+                    }
+                  },
+                  "value": {
+                    "type": "ref",
+                    "index": 3
+                  }
+                },
+                "value": {
+                  "type": "ref",
+                  "index": 2
+                }
+              },
+              "tail": {
+                "type": "pi",
+                "head": {
+                  "type": "application",
+                  "fun": {
+                    "type": "application",
+                    "fun": {
+                      "type": "application",
+                      "fun": {
+                        "type": "ident",
+                        "ident": "Eq"
+                      },
+                      "value": {
+                        "type": "ref",
+                        "index": 5
+                      }
+                    },
+                    "value": {
+                      "type": "ref",
+                      "index": 3
+                    }
+                  },
+                  "value": {
+                    "type": "ref",
+                    "index": 2
+                  }
+                },
+                "tail": {
+                  "type": "application",
+                  "fun": {
+                    "type": "application",
+                    "fun": {
+                      "type": "application",
+                      "fun": {
+                        "type": "ident",
+                        "ident": "Eq"
+                      },
+                      "value": {
+                        "type": "ref",
+                        "index": 6
+                      }
+                    },
+                    "value": {
+                      "type": "ref",
+                      "index": 5
+                    }
+                  },
+                  "value": {
+                    "type": "ref",
+                    "index": 3
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "def": null
+  },
+  "Eq.congr": {
+    "ty": {
+      "type": "pi",
+      "head": {
+        "type": "ident",
+        "ident": "Type"
+      },
+      "tail": {
+        "type": "pi",
+        "head": {
+          "type": "pi",
+          "head": {
+            "type": "ref",
+            "index": 1
+          },
+          "tail": {
+            "type": "ident",
+            "ident": "Type"
+          }
+        },
+        "tail": {
+          "type": "pi",
+          "head": {
+            "type": "ref",
+            "index": 2
+          },
+          "tail": {
+            "type": "pi",
+            "head": {
+              "type": "ref",
+              "index": 3
+            },
+            "tail": {
+              "type": "pi",
+              "head": {
+                "type": "application",
+                "fun": {
+                  "type": "application",
+                  "fun": {
+                    "type": "ident",
+                    "ident": "Eq"
+                  },
+                  "value": {
+                    "type": "ref",
+                    "index": 2
+                  }
+                },
+                "value": {
+                  "type": "ref",
+                  "index": 1
+                }
+              },
+              "tail": {
+                "type": "application",
+                "fun": {
+                  "type": "application",
+                  "fun": {
+                    "type": "ident",
+                    "ident": "Eq"
+                  },
+                  "value": {
+                    "type": "application",
+                    "fun": {
+                      "type": "ref",
+                      "index": 4
+                    },
+                    "value": {
+                      "type": "ref",
+                      "index": 3
+                    }
+                  }
+                },
+                "value": {
+                  "type": "application",
+                  "fun": {
+                    "type": "ref",
+                    "index": 4
+                  },
+                  "value": {
+                    "type": "ref",
+                    "index": 2
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "def": null
+  },
+  "Nat.Add": {
+    "ty": {
+      "type": "pi",
+      "head": {
+        "type": "ident",
+        "ident": "Nat"
+      },
+      "tail": {
+        "type": "pi",
+        "head": {
+          "type": "ident",
+          "ident": "Nat"
+        },
+        "tail": {
+          "type": "ident",
+          "ident": "Nat"
+        }
+      }
+    },
+    "def": null
+  },
+  "Nat.add_zero": {
+    "ty": {
+      "type": "pi",
+      "head": {
+        "type": "ident",
+        "ident": "Nat"
+      },
+      "tail": {
+        "type": "application",
+        "fun": {
+          "type": "application",
+          "fun": {
+            "type": "application",
+            "fun": {
+              "type": "ident",
+              "ident": "Eq"
+            },
+            "value": {
+              "type": "ident",
+              "ident": "Nat"
+            }
+          },
+          "value": {
+            "type": "application",
+            "fun": {
+              "type": "application",
+              "fun": {
+                "type": "ident",
+                "ident": "Nat.Add"
+              },
+              "value": {
+                "type": "ref",
+                "index": 1
+              }
+            },
+            "value": {
+              "type": "ident",
+              "ident": "Nat.zero"
+            }
+          }
+        },
+        "value": {
+          "type": "ref",
+          "index": 1
+        }
+      }
+    },
+    "def": null
+  },
+  "Nat.add_succ": {
+    "ty": {
+      "type": "pi",
+      "head": {
+        "type": "ident",
+        "ident": "Nat"
+      },
+      "tail": {
+        "type": "pi",
+        "head": {
+          "type": "ident",
+          "ident": "Nat"
+        },
+        "tail": {
+          "type": "application",
+          "fun": {
+            "type": "application",
+            "fun": {
+              "type": "ident",
+              "ident": "Eq"
+            },
+            "value": {
+              "type": "application",
+              "fun": {
+                "type": "application",
+                "fun": {
+                  "type": "ident",
+                  "ident": "Nat.Add"
+                },
+                "value": {
+                  "type": "ref",
+                  "index": 2
+                }
+              },
+              "value": {
+                "type": "application",
+                "fun": {
+                  "type": "ident",
+                  "ident": "Nat.succ"
+                },
+                "value": {
+                  "type": "ref",
+                  "index": 1
+                }
+              }
+            }
+          },
+          "value": {
+            "type": "application",
+            "fun": {
+              "type": "ident",
+              "ident": "Nat.succ"
+            },
+            "value": {
+              "type": "application",
+              "fun": {
+                "type": "application",
+                "fun": {
+                  "type": "ident",
+                  "ident": "Nat.Add"
+                },
+                "value": {
+                  "type": "ref",
+                  "index": 2
+                }
+              },
+              "value": {
+                "type": "ref",
+                "index": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "def": null
+  },
+  "zero_eq_zero": {
+    "ty": {
+      "type": "application",
+      "fun": {
+        "type": "application",
+        "fun": {
+          "type": "application",
+          "fun": {
+            "type": "ident",
+            "ident": "Eq"
+          },
+          "value": {
+            "type": "ident",
+            "ident": "Nat"
+          }
+        },
+        "value": {
+          "type": "ident",
+          "ident": "Nat.zero"
+        }
+      },
+      "value": {
+        "type": "ident",
+        "ident": "Nat.zero"
+      }
+    },
+    "def": {
+      "type": "application",
+      "fun": {
+        "type": "application",
+        "fun": {
+          "type": "ident",
+          "ident": "Eq.refl"
+        },
+        "value": {
+          "type": "ident",
+          "ident": "Nat"
+        }
+      },
+      "value": {
+        "type": "ident",
+        "ident": "Nat.zero"
+      }
+    }
+  },
+  "zero_plus_zero_eq_zero": {
+    "ty": {
+      "type": "application",
+      "fun": {
+        "type": "application",
+        "fun": {
+          "type": "application",
+          "fun": {
+            "type": "ident",
+            "ident": "Eq"
+          },
+          "value": {
+            "type": "ident",
+            "ident": "Nat"
+          }
+        },
+        "value": {
+          "type": "application",
+          "fun": {
+            "type": "application",
+            "fun": {
+              "type": "ident",
+              "ident": "Nat.Add"
+            },
+            "value": {
+              "type": "ident",
+              "ident": "Nat.zero"
+            }
+          },
+          "value": {
+            "type": "ident",
+            "ident": "Nat.zero"
+          }
+        }
+      },
+      "value": {
+        "type": "ident",
+        "ident": "Nat.zero"
+      }
+    },
+    "def": {
+      "type": "application",
+      "fun": {
+        "type": "ident",
+        "ident": "Nat.add_zero"
+      },
+      "value": {
+        "type": "ident",
+        "ident": "Nat.zero"
+      }
+    }
+  },
+  "zero_plus_zero_plus_zero_eq_zero": {
+    "ty": {
+      "type": "application",
+      "fun": {
+        "type": "application",
+        "fun": {
+          "type": "application",
+          "fun": {
+            "type": "ident",
+            "ident": "Eq"
+          },
+          "value": {
+            "type": "ident",
+            "ident": "Nat"
+          }
+        },
+        "value": {
+          "type": "application",
+          "fun": {
+            "type": "application",
+            "fun": {
+              "type": "ident",
+              "ident": "Nat.Add"
+            },
+            "value": {
+              "type": "application",
+              "fun": {
+                "type": "application",
+                "fun": {
+                  "type": "ident",
+                  "ident": "Nat.Add"
+                },
+                "value": {
+                  "type": "ident",
+                  "ident": "Nat.zero"
+                }
+              },
+              "value": {
+                "type": "ident",
+                "ident": "Nat.zero"
+              }
+            }
+          },
+          "value": {
+            "type": "ident",
+            "ident": "Nat.zero"
+          }
+        }
+      },
+      "value": {
+        "type": "ident",
+        "ident": "Nat.zero"
+      }
+    },
+    "def": {
+      "type": "application",
+      "fun": {
+        "type": "application",
+        "fun": {
+          "type": "application",
+          "fun": {
+            "type": "application",
+            "fun": {
+              "type": "application",
+              "fun": {
+                "type": "application",
+                "fun": {
+                  "type": "ident",
+                  "ident": "Eq.trans"
+                },
+                "value": {
+                  "type": "ident",
+                  "ident": "Nat"
+                }
+              },
+              "value": {
+                "type": "application",
+                "fun": {
+                  "type": "application",
+                  "fun": {
+                    "type": "ident",
+                    "ident": "Nat.Add"
+                  },
+                  "value": {
+                    "type": "application",
+                    "fun": {
+                      "type": "application",
+                      "fun": {
+                        "type": "ident",
+                        "ident": "Nat.Add"
+                      },
+                      "value": {
+                        "type": "ident",
+                        "ident": "Nat.zero"
+                      }
+                    },
+                    "value": {
+                      "type": "ident",
+                      "ident": "Nat.zero"
+                    }
+                  }
+                },
+                "value": {
+                  "type": "ident",
+                  "ident": "Nat.zero"
+                }
+              }
+            },
+            "value": {
+              "type": "application",
+              "fun": {
+                "type": "application",
+                "fun": {
+                  "type": "ident",
+                  "ident": "Nat.Add"
+                },
+                "value": {
+                  "type": "ident",
+                  "ident": "Nat.zero"
+                }
+              },
+              "value": {
+                "type": "ident",
+                "ident": "Nat.zero"
+              }
+            }
+          },
+          "value": {
+            "type": "ident",
+            "ident": "Nat.zero"
+          }
+        },
+        "value": {
+          "type": "application",
+          "fun": {
+            "type": "ident",
+            "ident": "Nat.add_zero"
+          },
+          "value": {
+            "type": "application",
+            "fun": {
+              "type": "application",
+              "fun": {
+                "type": "ident",
+                "ident": "Nat.Add"
+              },
+              "value": {
+                "type": "ident",
+                "ident": "Nat.zero"
+              }
+            },
+            "value": {
+              "type": "ident",
+              "ident": "Nat.zero"
+            }
+          }
+        }
+      },
+      "value": {
+        "type": "application",
+        "fun": {
+          "type": "ident",
+          "ident": "Nat.add_zero"
+        },
+        "value": {
+          "type": "ident",
+          "ident": "Nat.zero"
+        }
+      }
+    }
+  }
+}
