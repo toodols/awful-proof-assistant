@@ -5,6 +5,7 @@ import aliceandbob4 from "./levels/aliceandbob4.txt";
 import fruits1 from "./levels/fruits1.txt";
 import fruits2 from "./levels/fruits2.txt";
 import equality1 from "./levels/equality1.txt";
+import equality2 from "./levels/equality2.txt";
 import sandbox from "./levels/sandbox.txt";
 import family from "./levels/family.txt";
 import lol from "./levels/lol.txt";
@@ -17,6 +18,7 @@ export const levels = [
 	equality1,
 	fruits2,
 	aliceandbob4,
+	equality2,
 	family,
 	lol,
 	sandbox,

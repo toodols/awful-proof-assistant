@@ -1,11 +1,5 @@
-import { file, write } from "bun";
-import {
-	first_ident,
-	parse,
-	type Expr,
-	type Statement,
-	type Token,
-} from "./parser";
+import { file, write } from "bun"; // i stop being able to import txt when i remove this for some reason
+import { first_ident, type Expr, type Statement, type Token } from "./parser";
 
 type Globals = {
 	[k: string]: {
@@ -20,6 +14,15 @@ export function new_globals() {
 	const globals: Globals = {};
 
 	globals.Type = { ty: error_ty, def: null, rules: [] };
+	globals.Prop = {
+		ty: {
+			type: "global",
+			ident: "Type",
+			tokens: [],
+		},
+		def: null,
+		rules: [],
+	};
 	globals.Any = {
 		ty: {
 			type: "any",

@@ -25,7 +25,7 @@ const Render = ({
 	const reconstruct = () => {
 		let result = text;
 		let i = 0;
-		result = result.replace(/<INPUT>|<BLOCK>/, (input) => {
+		result = result.replace(/<INPUT>|<BLOCK>/g, (input) => {
 			const val = inputs.current[i]?.value ?? "<EMPTY>";
 			i++;
 			return val;
@@ -71,43 +71,49 @@ const Render = ({
 		const tokens = lex_all(before);
 		fragments.push(...renderTokens(tokens, l));
 		if (match[0] === "<INPUT>") {
-			fragments.push(
-				<input
-					key={`input-${match.index}`}
-					ref={(input) => {
-						if (!input) return;
-						inputs.current[l] = input;
-					}}
-					onChange={(e) => {
-						on_change?.(reconstruct());
-					}}
-				/>,
-			);
+			((i) => {
+				fragments.push(
+					<input
+						key={`input-${i}`}
+						ref={(input) => {
+							if (!input) return;
+
+							inputs.current[i] = input;
+						}}
+						onChange={(e) => {
+							on_change?.(reconstruct());
+						}}
+					/>,
+				);
+			})(l);
 			l++;
 		} else if (match[0] === "<BLOCK>") {
-			fragments.push(
-				<Editor
-					theme="vs-dark"
-					width={800}
-					height={1000}
-					key={`input-${match.index}`}
-					onMount={((i) => (editor, monaco) => {
-						inputs.current[i] = { value: editor.getValue() ?? "" };
-					})(l)}
-					onChange={((i) => (value, ev) => {
-						if (inputs.current[i]) {
-							inputs.current[i]!.value = value ?? "";
-							on_change?.(reconstruct());
-						}
-					})(l)}
-				/>,
-			);
+			((i) => {
+				fragments.push(
+					<Editor
+						theme="vs-dark"
+						width={800}
+						height={1000}
+						key={`input-${i}`}
+						onMount={(editor, monaco) => {
+							inputs.current[i] = {
+								value: editor.getValue() ?? "",
+							};
+						}}
+						onChange={(value, ev) => {
+							if (inputs.current[i]) {
+								inputs.current[i]!.value = value ?? "";
+								on_change?.(reconstruct());
+							}
+						}}
+					/>,
+				);
+			})(l);
 			l++;
 		}
 		tail = after;
 	}
 	inputs.current.length = l;
-	console.log(fragments);
 	const tail_tokens = lex_all(tail);
 	fragments.push(...renderTokens(tail_tokens, l));
 

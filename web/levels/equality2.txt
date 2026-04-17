@@ -1,19 +1,19 @@
-Eq : Type -> Type -> Prop;
-Eq.refl : (x : Type) -> Eq x x;
+Proposition : Type;
+Equals : Type -> Type -> Proposition;
 
-Eq.rec :
-	(x : Type) ->
-	(motive : (y : A) -> Eq x y -> Prop) ->
-	motive x (Eq.refl x) ->
-	(y : A) ->
-	(p : Eq x y) ->
-	motive y p;
+reflexive : (x : Type) -> Equals x x;
+symmetric : (x : Type) -> (y : Type) -> Equals x y -> Equals y x;
+transitive : (x : Type) -> (y : Type) -> (z : Type) -> Equals x y -> Equals y z -> Equals x z;
 
-Eq.symm : (x : Type) -> (y : Type) -> Eq x y -> Eq y x :=
-  (x : Type) => (y : Type) => (p : Eq x y) =>
-    Eq.rec 
-      x 
-      ((z : Type) => (path : Eq x z) => Eq z x)
-      (Eq.refl x)  
-      y                                
-      p
+coke : Type;
+pepsi : Type;
+dr_pepper: Type;
+
+coke_eq_pepsi : Eq coke pepsi;
+pepsi_eq_dr_pepper : Eq pepsi dr_pepper;
+// Use the symmetric property on coke_eq_pepsi
+pepsi_eq_coke : Equals pepsi coke := <INPUT>;
+// Use the transitive property on coke=pepsi and pepsi=dr pepper
+coke_eq_dr_pepper : Equals coke dr_pepper := <INPUT>;
+// Use symmetric property on the last result 
+dr_pepper_eq_coke : Equals dr_pepper coke := <INPUT>;
