@@ -1,0 +1,19 @@
+{
+	"name": "awful-proof-assistant-web",
+	"module": "index.tsx",
+	"type": "module",
+	"private": true,
+	"devDependencies": {
+		"@types/bun": "latest",
+		"@types/react": "^19.2.14",
+		"@types/react-dom": "^19.2.3",
+		"typescript-plugin-css-modules": "^5.2.0"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@monaco-editor/react": "^4.7.0",
+		"react-dom": "^19.2.5"
+	}
+}

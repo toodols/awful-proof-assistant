@@ -1,0 +1,15 @@
+Character : Type;
+
+Dead : Character -> Type;
+IsHero : Character -> Type;
+
+slay : (hero : Character) -> (villain : Character) -> IsHero hero -> Dead villain;
+
+Alice : Character;
+Bob : Character;
+Dragon : Character;
+
+alice_is_hero : IsHero Alice;
+bob_is_hero : IsHero Bob;
+
+dragon_must_die : Dead Dragon := <INPUT>;

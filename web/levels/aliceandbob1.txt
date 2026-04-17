@@ -1,0 +1,7 @@
+Hero : Type;
+
+alice : Hero;
+bob : Hero;
+// who is your hero?
+your_hero : Hero := <INPUT>;
+my_hero : Hero := <INPUT>; // let's share a hero?

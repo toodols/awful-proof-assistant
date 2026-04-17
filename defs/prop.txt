@@ -1,0 +1,22 @@
+Prop : Type;
+True : Prop;
+True.triv : True;
+False : Prop;
+False.elim : (T : Prop) -> False -> T;
+
+Prop.Iff : (a : Prop) -> (b : Prop) -> Prop;
+Prop.Iff.intro : (a : Prop) -> (b : Prop) -> (a -> b) -> (b -> a) -> Prop.Iff a b;
+
+Prop.Not : Prop -> Prop;
+Prop.Not.intro : (a : Prop) -> (a -> False) -> Prop.Not a;
+Prop.Not.elim : (a : Prop) -> Prop.Not a -> a -> False;
+
+Prop.And : Prop -> Prop -> Prop;
+Prop.And.intro : (a : Prop) -> (b : Prop) -> a -> b -> Prop.And a b;
+Prop.And.left : (a : Prop) -> (b : Prop) -> Prop.And a b -> a;
+Prop.And.right : (a : Prop) -> (b : Prop) -> Prop.And a b -> b;
+
+Prop.Or : Prop -> Prop -> Prop;
+Prop.Or.inl : (a : Prop) -> (b : Prop) -> a -> Prop.Or a b;
+Prop.Or.inr : (a : Prop) -> (b : Prop) -> b -> Prop.Or a b;
+Prop.Or.elim : (a : Prop) -> (b : Prop) -> (c : Prop) -> Prop.Or a b -> (a -> c) -> (b -> c) -> c;

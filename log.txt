@@ -1,0 +1,179 @@
+Debugger detached.
+Debugger attached.
+Recursive destructure @0 against Type
+[]
+Recursive destructure @0 against Prop
+[]
+Recursive destructure @0 against True
+[]
+Recursive destructure @0 against Prop
+[]
+Recursive destructure @0 against (Prop -> (False -> \2))
+[]
+Recursive destructure @0 against Type
+[]
+Recursive destructure @0 against Nat
+[]
+Recursive destructure @0 against (Nat -> Nat)
+[]
+Recursive destructure @0 against ((Nat -> Prop) -> ((\1 Nat.zero) -> ((Nat -> ((\3 \1) -> (\4 (Nat.succ \2)))) -> (Nat -> (\4 \1)))))
+[]
+Recursive destructure ((((Nat.rec @0) @1) @2) Nat.zero) against Prop
+[]
+Recursive destructure (((Nat.rec @0) @1) @2) against Any
+[]
+Recursive destructure ((Nat.rec @0) @1) against Any
+[]
+Recursive destructure (Nat.rec @0) against Any
+[]
+Recursive destructure Nat.rec against Any
+[]
+Substituting ((\1 Nat.zero) -> ((Nat -> ((\3 \1) -> (\4 (Nat.succ \2)))) -> (Nat -> (\4 \1)))) with 1: (Nat -> Prop)
+Substituting (\1 Nat.zero) with 1: (Nat -> Prop)
+Substituting \1 with 1: (Nat -> Prop)
+Substituting Nat.zero with 1: (Nat -> Prop)
+Substituting ((Nat -> Prop) Nat.zero) with 2: (Nat -> Prop), 1: ((Nat -> Prop) Nat.zero)
+Substituting (Nat -> Prop) with 2: (Nat -> Prop), 1: ((Nat -> Prop) Nat.zero)
+Substituting Nat with 2: (Nat -> Prop), 1: ((Nat -> Prop) Nat.zero)
+Substituting Nat with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: Nat
+Substituting Prop with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: Nat
+Substituting Nat.zero with 2: (Nat -> Prop), 1: ((Nat -> Prop) Nat.zero)
+Substituting ((Nat -> ((\3 \1) -> (\4 (Nat.succ \2)))) -> (Nat -> (\4 \1))) with 2: (Nat -> Prop), 1: ((Nat -> Prop) Nat.zero)
+Substituting (Nat -> ((\3 \1) -> (\4 (Nat.succ \2)))) with 2: (Nat -> Prop), 1: ((Nat -> Prop) Nat.zero)
+Substituting Nat with 2: (Nat -> Prop), 1: ((Nat -> Prop) Nat.zero)
+Substituting Nat with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: Nat
+Substituting ((\3 \1) -> (\4 (Nat.succ \2))) with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: Nat
+Substituting (\3 \1) with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: Nat
+Substituting \3 with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: Nat
+Substituting \1 with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: Nat
+Substituting ((Nat -> Prop) Nat) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting (Nat -> Prop) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: Nat, 2: ((Nat -> Prop) Nat), 1: Nat
+Substituting Prop with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: Nat, 2: ((Nat -> Prop) Nat), 1: Nat
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting (\4 (Nat.succ \2)) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting \4 with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting (Nat.succ \2) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat.succ with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting \2 with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))) with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat))))
+Substituting Nat with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat))))
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat))) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting ((Nat -> Prop) Nat) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting (Nat -> Prop) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting Nat with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: Nat
+Substituting Prop with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: Nat
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting ((Nat -> Prop) Nat) with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting (Nat -> Prop) with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat with 6: (Nat -> Prop), 5: ((Nat -> Prop) Nat.zero), 4: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 3: Nat, 2: ((Nat -> Prop) Nat), 1: Nat
+Substituting Prop with 6: (Nat -> Prop), 5: ((Nat -> Prop) Nat.zero), 4: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 3: Nat, 2: ((Nat -> Prop) Nat), 1: Nat
+Substituting Nat with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting ((Nat -> Prop) (Nat.succ Nat)) with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting (Nat -> Prop) with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat with 6: (Nat -> Prop), 5: ((Nat -> Prop) Nat.zero), 4: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 3: Nat, 2: ((Nat -> Prop) Nat), 1: Nat
+Substituting Prop with 6: (Nat -> Prop), 5: ((Nat -> Prop) Nat.zero), 4: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 3: Nat, 2: ((Nat -> Prop) Nat), 1: Nat
+Substituting (Nat.succ Nat) with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat.succ with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting (Nat -> (\4 \1)) with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat))))
+Substituting Nat with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat))))
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting (\4 \1) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting \4 with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting \1 with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Recursive destructure @0 against (Nat -> Prop)
+[ "(Nat -> Prop)" ]
+Substituting ((Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))) -> (Nat -> ((Nat -> Prop) Nat))) with 2: (Nat -> Prop), 1: ((Nat -> Prop) Nat.zero)
+Substituting (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))) with 2: (Nat -> Prop), 1: ((Nat -> Prop) Nat.zero)
+Substituting Nat with 2: (Nat -> Prop), 1: ((Nat -> Prop) Nat.zero)
+Substituting Nat with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: Nat
+Substituting (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat))) with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: Nat
+Substituting ((Nat -> Prop) Nat) with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: Nat
+Substituting (Nat -> Prop) with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: Nat
+Substituting Nat with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: Nat
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: Nat
+Substituting Prop with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: Nat
+Substituting Nat with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: Nat
+Substituting ((Nat -> Prop) Nat) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting (Nat -> Prop) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: Nat, 2: ((Nat -> Prop) Nat), 1: Nat
+Substituting Prop with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: Nat, 2: ((Nat -> Prop) Nat), 1: Nat
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting ((Nat -> Prop) (Nat.succ Nat)) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting (Nat -> Prop) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: Nat, 2: ((Nat -> Prop) Nat), 1: Nat
+Substituting Prop with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: Nat, 2: ((Nat -> Prop) Nat), 1: Nat
+Substituting (Nat.succ Nat) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat.succ with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))) with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat))))
+Substituting Nat with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat))))
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat))) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting ((Nat -> Prop) Nat) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting (Nat -> Prop) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting Nat with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: Nat
+Substituting Prop with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: Nat
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting ((Nat -> Prop) Nat) with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting (Nat -> Prop) with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat with 6: (Nat -> Prop), 5: ((Nat -> Prop) Nat.zero), 4: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 3: Nat, 2: ((Nat -> Prop) Nat), 1: Nat
+Substituting Prop with 6: (Nat -> Prop), 5: ((Nat -> Prop) Nat.zero), 4: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 3: Nat, 2: ((Nat -> Prop) Nat), 1: Nat
+Substituting Nat with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting ((Nat -> Prop) (Nat.succ Nat)) with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting (Nat -> Prop) with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat with 6: (Nat -> Prop), 5: ((Nat -> Prop) Nat.zero), 4: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 3: Nat, 2: ((Nat -> Prop) Nat), 1: Nat
+Substituting Prop with 6: (Nat -> Prop), 5: ((Nat -> Prop) Nat.zero), 4: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 3: Nat, 2: ((Nat -> Prop) Nat), 1: Nat
+Substituting (Nat.succ Nat) with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat.succ with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting Nat with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: ((Nat -> Prop) Nat)
+Substituting (Nat -> ((Nat -> Prop) Nat)) with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat))))
+Substituting Nat with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat))))
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting ((Nat -> Prop) Nat) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting (Nat -> Prop) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting Nat with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: Nat
+Substituting Prop with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: Nat
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Recursive destructure @1 against ((Nat -> Prop) Nat.zero)
+[ "(Nat -> Prop)", "((Nat -> Prop) Nat.zero)" ]
+Substituting (Nat -> ((Nat -> Prop) Nat)) with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat))))
+Substituting Nat with 3: (Nat -> Prop), 2: ((Nat -> Prop) Nat.zero), 1: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat))))
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting ((Nat -> Prop) Nat) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting (Nat -> Prop) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting Nat with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: Nat
+Substituting Prop with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: Nat
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Recursive destructure @2 against (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat))))
+[ "(Nat -> Prop)", "((Nat -> Prop) Nat.zero)", "(Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat))))" ]
+Substituting ((Nat -> Prop) Nat) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting (Nat -> Prop) with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+Substituting Nat with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: Nat
+Substituting Prop with 5: (Nat -> Prop), 4: ((Nat -> Prop) Nat.zero), 3: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 2: Nat, 1: Nat
+Substituting Nat with 4: (Nat -> Prop), 3: ((Nat -> Prop) Nat.zero), 2: (Nat -> (((Nat -> Prop) Nat) -> ((Nat -> Prop) (Nat.succ Nat)))), 1: Nat
+print_expr(tail)
+"((Nat -> Prop) Nat)"
+fun_ty.tail
+{fun: Object, tokens: Array(0), type: "application", value: {ident: "Nat", tokens: Array(0), type: "global"}}
+type: "application"
+fun: {head: {ident: "Nat", tokens: Array(0), type: "global"}, tail: {ident: "Prop", tokens: Array(0), type: "global"}, tokens: Array(0), type: "pi"}
+value: {ident: "Nat", tokens: Array(0), type: "global"}
+tokens: Array(0)
+[[Prototype]]: {}
+ref_vals
+Array(4) [Object, Object, Object, {ident: "Nat", tokens: Array(0), type: "global"}]

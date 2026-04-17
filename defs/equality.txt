@@ -1,0 +1,44 @@
+@require "prop.txt"
+
+Eq : (A : Type) -> (a : A) -> (b : A) -> Prop;
+Eq.refl : (A : Type) -> (x : A) -> Eq A x x;
+Eq.rec :
+	(A : Type) ->
+	(at : A) ->
+	(motive : (y : A) -> Eq A at y -> Prop) ->
+	(case_refl : motive at (Eq.refl A at)) ->
+	(target : A) ->
+    (evidence : Eq A at target) ->
+    motive target evidence;
+
+// i got chatgpt to do all these cause i can't understand recursors for my life
+
+Eq.symm : (A : Type) -> (x : A) -> (y : A) -> Eq A x y -> Eq A y x :=
+	(A : Type) => (x : A) => (y : A) => (p : Eq A x y) =>
+    Eq.rec
+		A
+		x
+    	((z : A) => (path : Eq A x z) => Eq A z x)
+		(Eq.refl A x)
+    	y
+    	p;
+
+Eq.trans : (A : Type) -> (x : A) -> (y : A) -> (z : A) -> Eq A x y -> Eq A y z -> Eq A x z :=
+	(A : Type) => (x : A) => (y : A) => (z : A) => (p : Eq A x y) => (q : Eq A y z) =>
+	Eq.rec
+		A
+    	y
+    	((t : A) => (e : Eq A y t) => Eq A x t)
+    	p
+    	z
+    	q;
+
+Eq.congr : (A : Type) -> (B : Type) -> (f : A -> B) -> (a : A) -> (b : A) -> Eq A a b -> Eq B (f a) (f b) :=
+	(A : Type) => (B : Type) => (f : A -> B) => (a : A) => (b : A) => (p : Eq A a b) =>
+    Eq.rec
+		A
+    	a
+    	((y : A) => (e : Eq A a y) => Eq B (f a) (f y))
+    	(Eq.refl B (f a))
+    	b
+    	p;

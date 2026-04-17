@@ -1,0 +1,73 @@
+* {
+	color: rgb(255, 255, 255);
+	font-family: Arial, Helvetica, sans-serif;
+}
+body {
+	background: rgb(56, 56, 56);
+}
+code {
+	display: inline-block;
+	white-space: pre-wrap;
+	background-color: rgb(49, 49, 49);
+	padding: 10px;
+}
+code > span {
+	font-family: "Consolas";
+	font-size: 15px;
+}
+.ident {
+	color: rgb(180, 234, 255);
+}
+.symbol {
+	color: rgb(255, 255, 255);
+}
+.string {
+	color: rgb(243, 89, 102);
+}
+code[data-show-hints="false"] > .comment {
+	display: none;
+}
+.comment {
+	color: rgb(128, 128, 128);
+	font-style: italic;
+}
+.number {
+	color: rgb(190, 255, 195);
+}
+.directive,
+.parentheses {
+	color: #ffc800;
+}
+code > input {
+	font-family: "Consolas";
+	font-size: 15px;
+	background-color: rgb(49, 49, 49);
+	color: rgb(180, 234, 255);
+	border: 1px solid #444444;
+	outline: none;
+}
+.button-container {
+	margin-top: 10px;
+}
+button {
+	padding: 10px;
+	background-color: rgb(49, 49, 49);
+	border: 1px solid #444444;
+	outline: none;
+}
+
+button:hover {
+	background-color: rgb(68, 68, 68);
+}
+
+.output[data-successful="true"] {
+	color: rgb(0, 255, 0);
+}
+
+.output[data-successful="false"] {
+	color: rgb(255, 0, 0);
+}
+
+.output {
+	margin-top: 10px;
+}

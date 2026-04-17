@@ -1,0 +1,10 @@
+Proposition : Type;
+Equals : Type -> Type -> Proposition;
+
+reflexive : (x : Type) -> Equals x x;
+symmetric : (x : Type) -> (y : Type) -> Equals x y -> Equals y x;
+
+coke : Type;
+pepsi : Type;
+// Use the reflexive property on coke
+coke_eq_coke : Equals coke coke := <INPUT>;

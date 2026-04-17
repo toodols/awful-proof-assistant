@@ -1,0 +1,93 @@
+@require "equality.txt"
+
+Nat : Type;
+Nat.zero : Nat;
+Nat.succ : Nat -> Nat;
+Nat.rec :
+	(motive : Nat -> Prop) ->
+	(case_zero : motive Nat.zero) ->
+	(case_succ : (n : Nat) -> motive n -> motive (Nat.succ n)) ->
+	(target : Nat) ->
+	motive target;
+
+Nat.Add : Nat -> Nat -> Nat;
+// ∀ x ∈ ℕ. x + 0 = x
+Nat.Add.add_zero : (x : Nat) -> Eq Nat (Nat.Add x Nat.zero) x;
+// ∀ x, y ∈ ℕ. x + S y = S (x + y)
+Nat.Add.add_succ : (x : Nat) -> (y : Nat) -> Eq Nat (Nat.Add x (Nat.succ y)) (Nat.succ (Nat.Add x y));
+
+// ∀ x ∈ ℕ. 0 + x = x
+Nat.Add.zero_add : (x : Nat) -> Eq Nat (Nat.Add Nat.zero x) x :=
+	Nat.rec
+		((x : Nat) => Eq Nat (Nat.Add Nat.zero x) x)
+		(Nat.Add.add_zero Nat.zero) // 0 + 0 = 0
+		(
+			// goal : 0 + x = x -> 0 + S x = S x
+			// h : 0 + x = x := intro on goal
+			// l1 : 0 + S x = S (0 + x) := add_succ on 0 x
+			// l2 : S (0 + x) = S x := Eq.congr on S h
+			// 0 + S x = S x := Eq.trans on l1 l2
+			(x : Nat) => (h : Eq Nat (Nat.Add Nat.zero x) x) =>
+			Eq.trans Nat
+				(Nat.Add Nat.zero (Nat.succ x)) // 0 + S x
+				(Nat.succ (Nat.Add Nat.zero x)) // S (0 + x)
+				(Nat.succ x) // S x
+				(Nat.Add.add_succ Nat.zero x) // 0 + S x = S (0 + x)
+				(Eq.congr Nat Nat Nat.succ (Nat.Add Nat.zero x) x h)
+		);
+
+
+// ∀ x ∈ ℕ. S x + y = S (x + y)
+Nat.Add.succ_add : (x : Nat) -> (y : Nat) -> Eq Nat (Nat.Add (Nat.succ x) y) (Nat.succ (Nat.Add x y)) :=
+	(x : Nat) => Nat.rec
+		((y : Nat) => Eq Nat (Nat.Add (Nat.succ x) y) (Nat.succ (Nat.Add x y)))
+		// goal: S x + 0 = S (x + 0)
+		// l1: S x + 0 = S x := add_zero on S x
+		// l2: x + 0 = x := add_zero on x
+		// l3: x = x + 0 := Eq.symm on l2
+		// l4: S x = S (x + 0) := Eq.congr S on l3
+		// S x + 0 = S (x + 0) := Eq.trans on l1 l4
+		(
+			Eq.trans Nat
+				(Nat.Add (Nat.succ x) Nat.zero)
+				(Nat.succ x)
+				(Nat.succ (Nat.Add x Nat.zero))
+				(Nat.Add.add_zero (Nat.succ x))
+				(
+					Eq.congr Nat Nat Nat.succ x (Nat.Add x Nat.zero)
+						(Eq.symm Nat (Nat.Add x Nat.zero) x (Nat.Add.add_zero x))
+				)
+		)
+
+		// goal: S x + y = S (x + y) -> S x + S y = S (x + S y)
+		// h : S x + y = S (x + y) := intro on goal
+		// l1: x + S y = S (x + y) := add_succ on x y
+		// l2: S (x + y) = x + S y := Eq.symm on l1
+		// l3: S x + y = x + S y := Eq.trans on h, l2
+		// l4: S (S x + y) = S (x + S y) := Eq.congr S on l3
+		// l5: S x + S y = S (S x + y) := add_succ on (S x) y
+		// goal: S x + S y = S (x + S y) := Eq.trans on l5 l4
+		// 
+		(
+			(y : Nat) => (h : Eq Nat (Nat.Add (Nat.succ x) y) (Nat.succ (Nat.Add x y))) =>
+			Eq.trans Nat
+				(Nat.Add (Nat.succ x) (Nat.succ y))
+				(Nat.succ (Nat.Add (Nat.succ x) y))
+				(Nat.succ (Nat.Add x (Nat.succ y)))
+				(Nat.Add.add_succ (Nat.succ x) y)
+				(Eq.congr Nat Nat Nat.succ
+					(Nat.Add (Nat.succ x) y)
+					(Nat.Add x (Nat.succ y))
+					(Eq.trans Nat
+						(Nat.Add (Nat.succ x) y)
+						(Nat.succ (Nat.Add x y))
+						(Nat.Add x (Nat.succ y))
+						h
+						(Eq.symm Nat
+							(Nat.Add x (Nat.succ y))
+							(Nat.succ (Nat.Add x y))
+							(Nat.Add.add_succ x y)
+						)
+					)
+				)
+		);

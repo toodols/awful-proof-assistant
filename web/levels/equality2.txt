@@ -1,0 +1,19 @@
+Eq : Type -> Type -> Prop;
+Eq.refl : (x : Type) -> Eq x x;
+
+Eq.rec :
+	(x : Type) ->
+	(motive : (y : A) -> Eq x y -> Prop) ->
+	motive x (Eq.refl x) ->
+	(y : A) ->
+	(p : Eq x y) ->
+	motive y p;
+
+Eq.symm : (x : Type) -> (y : Type) -> Eq x y -> Eq y x :=
+  (x : Type) => (y : Type) => (p : Eq x y) =>
+    Eq.rec 
+      x 
+      ((z : Type) => (path : Eq x z) => Eq z x)
+      (Eq.refl x)  
+      y                                
+      p

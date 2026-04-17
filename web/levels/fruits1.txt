@@ -1,0 +1,12 @@
+Red : Type; Orange : Type; Yellow : Type; Green : Type;
+
+apple : Red;
+tomato : Yellow; // I think someone is colorblind...
+banana : Green;
+orange : Red;
+grape : Orange;
+
+something_red : Red := <INPUT>;
+something_orange : Orange := <INPUT>;
+something_yellow : Yellow := <INPUT>;
+something_green : Green := <INPUT>;

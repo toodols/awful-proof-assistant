@@ -1,0 +1,20 @@
+Red : Type; Orange : Type; Yellow : Type; Green : Type; Alcohol : Type;
+// no tricks this time...
+tomato : Red;
+apple : Red;
+orange : Orange;
+mango : Orange;
+banana : Yellow;
+grape : Green;
+
+wine : Alcohol;
+ferment : Green -> Alcohol :=
+	( g : Green ) => wine;
+
+Meal : Type;
+fruity_meal : Red -> Orange -> Yellow -> Green -> Alcohol -> Meal;
+
+// fruity_meal with what? we still need something red, orange, and yellow
+sweet : Meal := <INPUT> grape (
+	ferment <INPUT> // what do we ferment with to get alcohol
+);

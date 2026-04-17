@@ -1,0 +1,11 @@
+Hero : Type;
+DragonFelled : Type;
+
+slay_dragon : Hero -> DragonFelled;
+
+alice : Hero;
+bob : Hero;
+
+your_hero : Hero := <INPUT>;
+// how do we down the dragon?
+step1 : DragonFelled := <INPUT> your_hero;

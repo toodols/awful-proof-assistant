@@ -1,0 +1,15 @@
+Hero : Type;
+DragonFelled : Type;
+WorldPeace : Type;
+
+slay_dragon : Hero -> DragonFelled;
+celebrate : DragonFelled -> WorldPeace;
+
+alice : Hero;
+bob : Hero;
+
+your_hero : Hero := <INPUT>;
+
+step1 : DragonFelled := slay_dragon your_hero;
+step2 : WorldPeace := /* DragonFelled is a type. We need something with the type of DragonFelled
+use celebrate on our previous result*/ <INPUT>;

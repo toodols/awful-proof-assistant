@@ -1,0 +1,4 @@
+@require "prop.txt"
+@require "equality.txt"
+@require "peano.txt"
+@require "list.txt"

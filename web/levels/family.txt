@@ -1,0 +1,31 @@
+Prop : Type;
+Character : Type;
+
+Father : (p : Character) -> (c : Character ) -> Prop;
+Mother : (p : Character) -> (c : Character ) -> Prop;
+
+Parent : (p : Character) -> (c : Character ) -> Prop;
+Parent.from_mother : (p : Character) -> ( c : Character ) -> Mother p c -> Parent p c;
+Parent.from_father : (p : Character) -> ( c : Character ) -> Father p c -> Parent p c;
+
+Grandparent : (g : Character) -> (c : Character) -> Prop;
+Grandparent.intro : (g : Character) -> (p : Character) -> (c : Character) -> Parent g p -> Parent p c -> Grandparent g c;
+
+Sibling : (s1 : Character) -> (s2 : Character) -> Prop;
+Sibling.intro : (s1 : Character) -> (s2 : Character) -> (p : Character) 
+             -> Parent p s1 -> Parent p s2 -> Sibling s1 s2;
+
+Rick : Character;
+Jerry : Character;
+Beth : Character;
+Morty : Character;
+Summer : Character;
+
+beth_mother_morty : Mother Beth Morty;
+beth_mother_summer : Mother Beth Summer;
+jerry_father_morty : Father Jerry Morty;
+jerry_father_summer : Father Jerry Summer;
+rick_father_beth : Father Rick Beth;
+
+morty_sibling_summer : Sibling Morty Rick := <INPUT>;
+rick_grandparent_morty : Grandparent Rick Morty := <INPUT>;

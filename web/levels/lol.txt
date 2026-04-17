@@ -1,0 +1,17 @@
+@require "prop.txt"
+@require "equality.txt"
+@require "peano.txt"
+
+// https://github.com/ImperialCollegeLondon/FLT
+flt :
+	(a : Nat) -> (b : Nat) -> (c : Nat) -> (n : Nat) ->
+	(
+		(Nat.Eq Nat
+			(Nat.Add
+				(Nat.Pow a (Nat.succ (Nat.succ (Nat.succ n))))
+				(Nat.Pow b (Nat.succ (Nat.succ (Nat.succ n))))
+			)
+			(Nat.Pow c (Nat.succ (Nat.succ (Nat.succ n))))
+		) ->
+		False
+	) := <INPUT>;
