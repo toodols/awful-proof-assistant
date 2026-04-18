@@ -1,5 +1,4 @@
-Proposition : Type;
-Equals : Type -> Type -> Proposition;
+Equals : Type -> Type -> Prop;
 
 reflexive : (x : Type) -> Equals x x;
 symmetric : (x : Type) -> (y : Type) -> Equals x y -> Equals y x;

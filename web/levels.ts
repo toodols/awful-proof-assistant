@@ -18,8 +18,8 @@ export const levels = [
 	equality1,
 	fruits2,
 	aliceandbob4,
-	equality2,
 	family,
+	equality2,
 	lol,
 	sandbox,
 ];

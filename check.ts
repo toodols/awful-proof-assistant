@@ -341,6 +341,7 @@ function app_subst_new_refs(tail: Expr, value: Expr, depth = 1): Expr {
 	}
 }
 
+// aka beta reduction. reduces expressions of the form `(A => B) a`
 function reduce_simp_app(expr: Expr): Expr {
 	if (expr.type === "application") {
 		if (expr.fun.type === "lambda") {

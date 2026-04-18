@@ -1,4 +1,3 @@
-Prop : Type;
 Character : Type;
 
 Father : (p : Character) -> (c : Character ) -> Prop;
@@ -27,5 +26,5 @@ jerry_father_morty : Father Jerry Morty;
 jerry_father_summer : Father Jerry Summer;
 rick_father_beth : Father Rick Beth;
 
-morty_sibling_summer : Sibling Morty Rick := <INPUT>;
+morty_sibling_summer : Sibling Morty Summer := <INPUT>;
 rick_grandparent_morty : Grandparent Rick Morty := <INPUT>;

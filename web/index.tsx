@@ -147,6 +147,7 @@ const Main = () => {
 		<main>
 			<h2>Level {level_num + 1}</h2>
 			<Render
+				key={level_num}
 				text={level}
 				show_hints={show_hints}
 				on_change={(value) => {
@@ -181,6 +182,7 @@ const Main = () => {
 							set_successful(true);
 						} catch (e: unknown) {
 							set_output(e as Error);
+							set_successful(false);
 						}
 					}}
 				>
