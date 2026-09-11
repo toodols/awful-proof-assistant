@@ -56,7 +56,11 @@ export type Expr =
 			tokens: Token[];
 	  }
 	| {
+			// An opaque value of a known type: a pattern variable, or a binder
+			// substituted away. `id` identifies which binder it came from, so
+			// two variables that merely share a type are not confused.
 			type: "value_with_type";
+			id: number;
 			ty: Expr;
 			tokens: Token[];
 	  };

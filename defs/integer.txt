@@ -1,0 +1,48 @@
+Int : Type;
+Int.nat : Nat -> Int;
+Int.neg_succ : Nat -> Int;
+Int.rec :
+    (motive : Int -> Type) ->
+    (case_nat : (n : Nat) -> motive (Int.nat n) -> motive (Int.nat n)) ->
+    (case_neg_succ : (n : Nat) -> motive (Int.neg_succ n) -> motive (Int.neg_succ n)) ->
+    (target : Int) ->
+    motive target;
+
+Int.rec_prop :
+    (motive : Int -> Prop) ->
+    (case_nat : (n : Nat) -> motive (Int.nat n) -> motive (Int.nat n)) ->
+    (case_neg_succ : (n : Nat) -> motive (Int.neg_succ n) -> motive (Int.neg_succ n)) ->
+    (target : Int) ->
+    motive target :=
+    (motive : Int -> Prop) =>
+    (case_nat : (n : Nat) -> motive (Int.nat n) -> motive (Int.nat n)) =>
+    (case_neg_succ : (n : Nat) -> motive (Int.neg_succ n) -> motive (Int.neg_succ n)) =>
+    (target : Int) =>
+    Lift.elim (motive target)
+      (Int.rec
+        ((x : Int) => Lift (motive x))
+        ((n : Nat) => (ih : Lift (motive (Int.nat n))) => Lift.intro (motive (Int.nat n)) (case_nat n (Lift.elim (motive (Int.nat n)) ih)))
+        ((n : Nat) => (ih : Lift (motive (Int.neg_succ n))) => Lift.intro (motive (Int.neg_succ n)) (case_neg_succ n (Lift.elim (motive (Int.neg_succ n)) ih)))
+        target);
+
+Int.Add : Int -> Int -> Int;
+
+Int.Add.add_nat_nat :
+	(x : Nat) ->
+	(y : Nat) ->
+	Eq Int
+		(Int.Add (Int.nat x) (Int.nat y))
+		(Int.nat (Nat.Add x y));
+	
+Int.Add.add_neg_succ_neg_succ :
+	(x : Nat) ->
+	(y : Nat) ->
+	Eq Int
+		(Int.Add (Int.neg_succ x) (Int.neg_succ y))
+		(Int.neg_succ (Nat.succ (Nat.Add x y)));
+
+Int.Add.add_zero_neg_succ:
+	(x : Nat) ->
+	Eq Int
+		(Int.Add (Int.nat Nat.zero) (Int.neg_succ x))
+		(Int.neg_succ x);

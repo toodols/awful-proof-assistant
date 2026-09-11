@@ -10,6 +10,14 @@ type Globals = {
 };
 const error_ty = { type: "error" as const, tokens: [] as Token[] };
 
+// An opaque value of type `ty`, standing for a binder we cannot see inside of.
+// Every call mints a fresh identity, so `(A : Type) -> (B : Type) -> A -> B`
+// does not accept an `A` where it asked for a `B`.
+let next_opaque_id = 0;
+function opaque(ty: Expr): Expr {
+	return { type: "value_with_type", id: next_opaque_id++, ty, tokens: [] };
+}
+
 export function new_globals() {
 	const globals: Globals = {};
 
@@ -57,13 +65,15 @@ export function print_expr(expr: Expr): string {
 	} else if (expr.type === "any") {
 		return `Any`;
 	} else if (expr.type === "value_with_type") {
-		return `(_ : ${print_expr(expr.ty)})`;
+		// the id tells two opaque values of the same type apart
+		return `(_${expr.id} : ${print_expr(expr.ty)})`;
 	} else {
 		return `<${expr.type} is err>`;
 	}
 }
 
-// Substitute refs in an expression with known values
+// Substitute refs in an expression with known values.
+// `ref_vals` holds one opaque value per enclosing binder, innermost last.
 function subst_refs(expr: Expr, ref_vals: Expr[]): Expr {
 	// console.log(
 	// 	`Substituting ${print_expr(expr)} with ${ref_vals.map((e, i) => `${ref_vals.length - i}: ${print_expr(e)}`).join(", ")}`,
@@ -73,7 +83,7 @@ function subst_refs(expr: Expr, ref_vals: Expr[]): Expr {
 		if (v === undefined) {
 			throw new Error(`Could not find ref ${expr.index}`);
 		}
-		return { type: "value_with_type", ty: v, tokens: [] };
+		return v;
 	} else if (expr.type === "application") {
 		return {
 			type: "application",
@@ -83,7 +93,7 @@ function subst_refs(expr: Expr, ref_vals: Expr[]): Expr {
 		};
 	} else if (expr.type === "pi") {
 		const head = subst_refs(expr.head, ref_vals);
-		ref_vals.push(head);
+		ref_vals.push(opaque(head));
 
 		const val: Expr = {
 			type: "pi",
@@ -114,13 +124,11 @@ function destructure(
 	names: string[],
 	destructured: Record<string, Expr>,
 	ref_vals: Expr[] = [],
+	// the opaque value this position was already given, if the caller made one
+	value?: Expr,
 ): Expr {
 	if (pat.type === "def") {
-		destructured[names[pat.index]!] = {
-			type: "value_with_type",
-			ty,
-			tokens: [],
-		};
+		destructured[names[pat.index]!] = value ?? opaque(ty);
 		return ty;
 	} else if (pat.type === "application") {
 		// pat.fun = ((A => B => C) b) c
@@ -137,21 +145,31 @@ function destructure(
 		// tail = C;
 		// head = B;
 		const head = fun_ty.head;
-		ref_vals.push(head);
+		// the argument and every ref to it in the tail are the same value
+		const bound = opaque(head);
+		ref_vals.push(bound);
 		const tail = reduce_simp_app(subst_refs(fun_ty.tail, ref_vals));
-		if (!is_subtype(tail, ty)) {
+		if (!is_subtype(globals, tail, ty)) {
 			throw new Error(
 				`expected type ${print_expr(tail)} to be a subtype of ${print_expr(ty)}`,
 			);
 		}
 
 		// b : B
-		destructure(globals, pat.value, head, names, destructured, ref_vals);
+		destructure(
+			globals,
+			pat.value,
+			head,
+			names,
+			destructured,
+			ref_vals,
+			bound,
+		);
 		// DO NOT POP REFVALS
 		return tail;
 	} else if (pat.type === "global") {
 		const var_ty = globals[pat.ident]!.ty;
-		if (!is_subtype(var_ty, ty)) {
+		if (!is_subtype(globals, var_ty, ty)) {
 			throw new Error(
 				`expected type ${print_expr(var_ty)} to be a subtype of ${print_expr(ty)}`,
 			);
@@ -228,8 +246,20 @@ function type_of(
 		ref_tys.pop();
 		return res;
 	} else if (value.type === "pi") {
-		// type of any Pi expression is just Type
-		return { type: "global", ident: "Type", tokens: [] };
+		// A pi lands in Prop whenever its codomain does, however big the
+		// domain is - impredicativity, Lean's `imax` with only two sorts.
+		ref_tys.push(value.head);
+		let tail_ty: Expr;
+		try {
+			tail_ty = type_of(globals, value.tail, inner_defs, ref_tys);
+		} finally {
+			ref_tys.pop();
+		}
+		const sort =
+			tail_ty.type === "global" && tail_ty.ident === "Prop"
+				? "Prop"
+				: "Type";
+		return { type: "global", ident: sort, tokens: [] };
 	} else if (value.type === "ref") {
 		// only lambda can introduce expressions to ref in type_of so no conflicts with pi
 		// however the ref could be referring to another ref
@@ -386,9 +416,9 @@ function reduce_simp_app(expr: Expr): Expr {
 	}
 }
 
-function is_subtype(subty: Expr, ty: Expr): boolean {
+function is_subtype(globals: Globals, subty: Expr, ty: Expr): boolean {
 	if (ty.type === "any") return true;
-	return struct_eq(subty, ty);
+	return struct_eq(globals, subty, ty);
 }
 
 function member_of(
@@ -398,7 +428,7 @@ function member_of(
 	inner_defs: Record<string, Expr> = {},
 	ref_tys: Expr[] = [],
 ): boolean {
-	return is_subtype(type_of(defs, expr, inner_defs, ref_tys), ty);
+	return is_subtype(defs, type_of(defs, expr, inner_defs, ref_tys), ty);
 }
 
 // Rename ident in and out of bound variables to use de Bruijn indices and stuff
@@ -505,42 +535,99 @@ function norm_names(
 	throw new Error("unreachable");
 }
 
-// Whether two expressions are structurally equal
-function struct_eq(a: Expr, b: Expr): boolean {
+// Whether two expressions are structurally equal.
+// Pass globals to enable proof irrelevance (any two proofs of the same Prop are equal).
+// Pass null to do a plain structural comparison without proof irrelevance (used internally
+// to compare types while checking proof irrelevance, avoiding infinite recursion).
+function struct_eq(globals: Globals | null, a: Expr, b: Expr): boolean {
+	if (globals !== null) {
+		try {
+			const ty_a = type_of(globals, a);
+			const ty_b = type_of(globals, b);
+			// use plain structural comparison for the type check to avoid infinite recursion
+			if (struct_eq(null, ty_a, ty_b)) {
+				const ty_ty = type_of(globals, ty_a);
+				if (ty_ty.type === "global" && ty_ty.ident === "Prop") {
+					return true;
+				}
+			}
+		} catch {}
+	}
 	if (a.type === "application") {
 		return (
-			b.type === a.type &&
-			struct_eq(a.fun, b.fun) &&
-			struct_eq(a.value, b.value)
+			b.type === "application" &&
+			struct_eq(globals, a.fun, b.fun) &&
+			struct_eq(globals, a.value, b.value)
 		);
 	} else if (a.type === "lambda") {
 		return (
-			b.type === a.type &&
-			struct_eq(a.head, b.head) &&
-			struct_eq(a.tail, b.tail)
+			b.type === "lambda" &&
+			struct_eq(globals, a.head, b.head) &&
+			struct_eq(globals, a.tail, b.tail)
 		);
 	} else if (a.type === "pi") {
 		return (
-			b.type === a.type &&
-			struct_eq(a.head, b.head) &&
-			struct_eq(a.tail, b.tail)
+			b.type === "pi" &&
+			struct_eq(globals, a.head, b.head) &&
+			struct_eq(globals, a.tail, b.tail)
 		);
 	} else if (a.type === "global") {
-		return b.type === a.type && a.ident === b.ident;
+		return b.type === "global" && a.ident === b.ident;
 	} else if (a.type === "ref") {
-		return b.type === a.type && a.index === b.index;
+		return b.type === "ref" && a.index === b.index;
+	} else if (a.type === "value_with_type") {
+		// opaque values are equal only when they came from the same binder
+		return b.type === "value_with_type" && a.id === b.id;
 	} else {
 		throw new Error(`unreachable: ${a.type}`);
 	}
 }
 
+// A declaration's type has to be a type. Without this an axiom could be
+// stated with a nonsense type, because nothing else ever looks at the type of a
+// declaration that has no definition. `Type` and `Prop` are sorts themselves,
+// so they pass on sight.
+function check_is_type(
+	globals: Globals,
+	ty: Expr,
+	inner_defs: Record<string, Expr>,
+) {
+	if (ty.type === "global" && (ty.ident === "Type" || ty.ident === "Prop")) {
+		return;
+	}
+	if (ty.type === "any" || ty.type === "sorry") return;
+	const sort = type_of(globals, ty, inner_defs);
+	if (
+		!(
+			sort.type === "global" &&
+			(sort.ident === "Type" || sort.ident === "Prop")
+		)
+	) {
+		throw new Error(
+			`${print_expr(ty)} is not a type: it has type ${print_expr(sort)}`,
+		);
+	}
+}
+
 export function check_stmt(globals: Globals, stmt: Statement) {
-	const ty = reduce_simp_app(norm_names(globals, stmt.ty));
 	let refs: Expr[] = [];
 	let inner_defs: Record<string, Expr> = {};
 	let def_names: string[] = [];
 	let pat = norm_names(globals, stmt.pat, undefined, def_names);
-	destructure(globals, pat, ty, def_names, inner_defs);
+
+	let ty: Expr;
+	if (stmt.pat.type === "application") {
+		// For pattern match rules, ty may reference pattern variables (e.g. `left A a b : A`).
+		// Destructure against Any first to populate inner_defs, then resolve ty in that context.
+		destructure(globals, pat, { type: "any", tokens: [] }, def_names, inner_defs);
+		ty = reduce_simp_app(norm_names(globals, stmt.ty, inner_defs));
+	} else {
+		ty = reduce_simp_app(norm_names(globals, stmt.ty));
+		destructure(globals, pat, ty, def_names, inner_defs);
+	}
+
+	check_is_type(globals, ty, inner_defs);
+
 	const def = stmt.def ? norm_names(globals, stmt.def, inner_defs) : null;
 
 	if (def) {

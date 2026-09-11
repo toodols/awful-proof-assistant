@@ -4,18 +4,40 @@ Eq : (A : Type) -> (a : A) -> (b : A) -> Prop;
 Eq.refl : (A : Type) -> (x : A) -> Eq A x x;
 Eq.rec :
 	(A : Type) ->
-	(at : A) ->
-	(motive : (y : A) -> Eq A at y -> Prop) ->
-	(case_refl : motive at (Eq.refl A at)) ->
+	(a : A) ->
+	(motive : (b : A) -> Eq A a b -> Type) ->
+	(case_refl : motive a (Eq.refl A a)) ->
 	(target : A) ->
-    (evidence : Eq A at target) ->
+    (evidence : Eq A a target) ->
     motive target evidence;
 
-// i got chatgpt to do all these cause i can't understand recursors for my life
+Eq.rec_prop :
+	(A : Type) ->
+	(a : A) ->
+	(motive : (b : A) -> Eq A a b -> Prop) ->
+	(case_refl : motive a (Eq.refl A a)) ->
+	(target : A) ->
+    (evidence : Eq A a target) ->
+    motive target evidence :=
+	(A : Type) =>
+	(a : A) =>
+	(motive : (b : A) -> Eq A a b -> Prop) =>
+	(case_refl : motive a (Eq.refl A a)) =>
+	(target : A) =>
+    (evidence : Eq A a target) =>
+	Lift.elim (motive target evidence)
+		(Eq.rec
+			A
+			a
+			((b : A) => (p: Eq A a b) => Lift (motive b p))	
+			(Lift.intro (motive a (Eq.refl A a)) case_refl)
+			target
+			evidence
+		);
 
 Eq.symm : (A : Type) -> (x : A) -> (y : A) -> Eq A x y -> Eq A y x :=
 	(A : Type) => (x : A) => (y : A) => (p : Eq A x y) =>
-    Eq.rec
+    Eq.rec_prop
 		A
 		x
     	((z : A) => (path : Eq A x z) => Eq A z x)
@@ -25,7 +47,7 @@ Eq.symm : (A : Type) -> (x : A) -> (y : A) -> Eq A x y -> Eq A y x :=
 
 Eq.trans : (A : Type) -> (x : A) -> (y : A) -> (z : A) -> Eq A x y -> Eq A y z -> Eq A x z :=
 	(A : Type) => (x : A) => (y : A) => (z : A) => (p : Eq A x y) => (q : Eq A y z) =>
-	Eq.rec
+	Eq.rec_prop
 		A
     	y
     	((t : A) => (e : Eq A y t) => Eq A x t)
@@ -35,7 +57,7 @@ Eq.trans : (A : Type) -> (x : A) -> (y : A) -> (z : A) -> Eq A x y -> Eq A y z -
 
 Eq.congr : (A : Type) -> (B : Type) -> (f : A -> B) -> (a : A) -> (b : A) -> Eq A a b -> Eq B (f a) (f b) :=
 	(A : Type) => (B : Type) => (f : A -> B) => (a : A) => (b : A) => (p : Eq A a b) =>
-    Eq.rec
+    Eq.rec_prop
 		A
     	a
     	((y : A) => (e : Eq A a y) => Eq B (f a) (f y))

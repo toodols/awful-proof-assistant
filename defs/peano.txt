@@ -4,12 +4,34 @@ Nat : Type;
 Nat.zero : Nat;
 Nat.succ : Nat -> Nat;
 Nat.rec :
-	(motive : Nat -> Prop) ->
+	(motive : Nat -> Type) ->
 	(case_zero : motive Nat.zero) ->
 	(case_succ : (n : Nat) -> motive n -> motive (Nat.succ n)) ->
 	(target : Nat) ->
 	motive target;
 
+Nat.rec_prop :
+	(motive : Nat -> Prop) ->
+	(case_zero : motive Nat.zero) ->
+	(case_succ : (n : Nat) -> motive n -> motive (Nat.succ n)) ->
+	(target : Nat) ->
+	motive target :=
+	(motive : Nat -> Prop) =>
+	(case_zero : motive Nat.zero) =>
+	(case_succ : (n : Nat) -> motive n -> motive (Nat.succ n)) =>
+	(target : Nat) =>
+	Lift.elim
+		(motive target)
+		(Nat.rec
+			((n : Nat) => Lift (motive n))
+			(Lift.intro (motive Nat.zero) case_zero)
+			((n : Nat) =>
+				(x : Lift (motive n)) =>
+				Lift.intro
+					(motive (Nat.succ n))
+					(case_succ n (Lift.elim (motive n) x)))
+			target);
+	
 Nat.Add : Nat -> Nat -> Nat;
 // ∀ x ∈ ℕ. x + 0 = x
 Nat.Add.add_zero : (x : Nat) -> Eq Nat (Nat.Add x Nat.zero) x;
@@ -18,7 +40,7 @@ Nat.Add.add_succ : (x : Nat) -> (y : Nat) -> Eq Nat (Nat.Add x (Nat.succ y)) (Na
 
 // ∀ x ∈ ℕ. 0 + x = x
 Nat.Add.zero_add : (x : Nat) -> Eq Nat (Nat.Add Nat.zero x) x :=
-	Nat.rec
+	Nat.rec_prop
 		((x : Nat) => Eq Nat (Nat.Add Nat.zero x) x)
 		(Nat.Add.add_zero Nat.zero) // 0 + 0 = 0
 		(
@@ -39,7 +61,7 @@ Nat.Add.zero_add : (x : Nat) -> Eq Nat (Nat.Add Nat.zero x) x :=
 
 // ∀ x ∈ ℕ. S x + y = S (x + y)
 Nat.Add.succ_add : (x : Nat) -> (y : Nat) -> Eq Nat (Nat.Add (Nat.succ x) y) (Nat.succ (Nat.Add x y)) :=
-	(x : Nat) => Nat.rec
+	(x : Nat) => Nat.rec_prop
 		((y : Nat) => Eq Nat (Nat.Add (Nat.succ x) y) (Nat.succ (Nat.Add x y)))
 		// goal: S x + 0 = S (x + 0)
 		// l1: S x + 0 = S x := add_zero on S x

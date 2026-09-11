@@ -3,6 +3,9 @@
 	"module": "index.ts",
 	"type": "module",
 	"private": true,
+	"scripts": {
+		"export": "bun run lean_export.ts"
+	},
 	"devDependencies": {
 		"@types/bun": "latest"
 	},

@@ -1,15 +1,54 @@
-Prop : Type;
 True : Prop;
 True.triv : True;
 False : Prop;
 False.elim : (T : Prop) -> False -> T;
 
+Lift : Prop -> Type;
+Lift.intro : (p : Prop) -> p -> Lift p;
+Lift.elim : (p : Prop) -> Lift p -> p;
+
 Prop.Iff : (a : Prop) -> (b : Prop) -> Prop;
 Prop.Iff.intro : (a : Prop) -> (b : Prop) -> (a -> b) -> (b -> a) -> Prop.Iff a b;
 
-Prop.Not : Prop -> Prop;
-Prop.Not.intro : (a : Prop) -> (a -> False) -> Prop.Not a;
-Prop.Not.elim : (a : Prop) -> Prop.Not a -> a -> False;
+Not : Prop -> Prop;
+Not.intro : (a : Prop) -> (a -> False) -> Not a;
+Not.rec :
+	(a : Prop) ->
+	(motive : Not a -> Type) ->
+	(case_intro : (proof : a -> False) -> motive (Not.intro a proof)) ->
+	(evidence : Not a) ->
+	motive evidence;
+
+// Not.rec eliminates into Type; Lift it to eliminate into Prop, the same way
+// Nat.rec_prop and Eq.rec_prop do.
+Not.rec_prop :
+	(a : Prop) ->
+	(motive : Not a -> Prop) ->
+	(case_intro : (proof : a -> False) -> motive (Not.intro a proof)) ->
+	(evidence : Not a) ->
+	motive evidence :=
+	(a : Prop) =>
+	(motive : Not a -> Prop) =>
+	(case_intro : (proof : a -> False) -> motive (Not.intro a proof)) =>
+	(evidence : Not a) =>
+	Lift.elim
+		(motive evidence)
+		(Not.rec
+			a
+			((e : Not a) => Lift (motive e))
+			((proof : a -> False) =>
+				Lift.intro
+					(motive (Not.intro a proof))
+					(case_intro proof))
+			evidence);
+
+Not.elim : (a : Prop) -> Not a -> a -> False :=
+	(a : Prop) => (p : Not a) =>
+	Not.rec_prop
+		a
+		(Not a => (a -> False))
+		((proof : a -> False) => proof)
+		p;
 
 Prop.And : Prop -> Prop -> Prop;
 Prop.And.intro : (a : Prop) -> (b : Prop) -> a -> b -> Prop.And a b;
@@ -20,3 +59,9 @@ Prop.Or : Prop -> Prop -> Prop;
 Prop.Or.inl : (a : Prop) -> (b : Prop) -> a -> Prop.Or a b;
 Prop.Or.inr : (a : Prop) -> (b : Prop) -> b -> Prop.Or a b;
 Prop.Or.elim : (a : Prop) -> (b : Prop) -> (c : Prop) -> Prop.Or a b -> (a -> c) -> (b -> c) -> c;
+
+Exists : (A : Type) -> (P : A -> Prop) -> Prop;
+Exists.intro : (A : Type) -> (P : A -> Prop) -> (a : A) -> P a -> Exists A P;
+
+ForAll : (A : Type) -> (P : A -> Prop) -> Prop;
+ForAll.intro : (A : Type) -> (P : A -> Prop) -> ((a : A) -> P a) -> ForAll A P;

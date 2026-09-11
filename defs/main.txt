@@ -2,3 +2,4 @@
 @require "equality.txt"
 @require "peano.txt"
 @require "list.txt"
+@require "integer.txt"
