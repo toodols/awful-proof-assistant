@@ -184,6 +184,94 @@ test("markers can be waived", async () => {
 	).toThrow();
 });
 
+// @rec(X) derives the canonical recursor for X and compares, so a written one
+// cannot quietly be the wrong shape.
+test("a recursor has to be the recursor", async () => {
+	const nat = `
+		@inductive
+		Nat : Type;
+		@intro(Nat)
+		Nat.zero : Nat;
+		@intro(Nat)
+		Nat.succ : Nat -> Nat;
+	`;
+	const check = async (source: string) => {
+		const statements = await expand("main.txt", async () => source);
+		return () => check_program(new_globals(), statements);
+	};
+	expect(
+		await check(
+			nat +
+				`
+		@rec(Nat)
+		Nat.rec :
+			(motive : Nat -> Type) ->
+			(case_zero : motive Nat.zero) ->
+			(case_succ : (n : Nat) -> motive n -> motive (Nat.succ n)) ->
+			(target : Nat) ->
+			motive target;
+		`,
+		),
+	).not.toThrow();
+	// a missing case, and a missing induction hypothesis
+	expect(
+		await check(
+			nat +
+				`
+		@rec(Nat)
+		Nat.rec :
+			(motive : Nat -> Type) ->
+			(case_succ : (n : Nat) -> motive n -> motive (Nat.succ n)) ->
+			(target : Nat) ->
+			motive target;
+		`,
+		),
+	).toThrow();
+	expect(
+		await check(
+			nat +
+				`
+		@rec(Nat)
+		Nat.rec :
+			(motive : Nat -> Type) ->
+			(case_zero : motive Nat.zero) ->
+			(case_succ : (n : Nat) -> motive (Nat.succ n)) ->
+			(target : Nat) ->
+			motive target;
+		`,
+		),
+	).toThrow();
+});
+
+// A Prop with more than one constructor may not eliminate into Type: a proof
+// could then say which side it came from, and Prop would stop being irrelevant.
+test("large elimination is restricted", async () => {
+	const or = `
+		@inductive
+		Or : (a : Prop) -> (b : Prop) -> Prop;
+		@intro(Or)
+		Or.inl : (a : Prop) -> (b : Prop) -> a -> Or a b;
+		@intro(Or)
+		Or.inr : (a : Prop) -> (b : Prop) -> b -> Or a b;
+	`;
+	const rec = (sort: string) => `
+		@rec(Or)
+		Or.rec :
+			(a : Prop) -> (b : Prop) ->
+			(motive : Or a b -> ${sort}) ->
+			(case_inl : (x : a) -> motive (Or.inl a b x)) ->
+			(case_inr : (y : b) -> motive (Or.inr a b y)) ->
+			(target : Or a b) ->
+			motive target;
+	`;
+	const check = async (source: string) => {
+		const statements = await expand("main.txt", async () => source);
+		return () => check_program(new_globals(), statements);
+	};
+	expect(await check(or + rec("Prop"))).not.toThrow();
+	expect(await check(or + rec("Type"))).toThrow();
+});
+
 // The point of the markers: the trust base is greppable, and it matches what
 // the exporter reports. @inductive and @intro still export as axioms, since
 // nothing generates recursors yet, so every marker is one exported axiom. A

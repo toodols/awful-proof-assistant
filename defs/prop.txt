@@ -23,7 +23,7 @@ Prop.Iff.intro : (a : Prop) -> (b : Prop) -> (a -> b) -> (b -> a) -> Prop.Iff a 
 Not : Prop -> Prop;
 @intro(Not)
 Not.intro : (a : Prop) -> (a -> False) -> Not a;
-@axiom
+@rec(Not)
 Not.rec :
 	(a : Prop) ->
 	(motive : Not a -> Type) ->

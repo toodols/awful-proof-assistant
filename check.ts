@@ -663,8 +663,270 @@ function check_is_type(
 // What a declaration with no `:=` is allowed to claim to be. Only `@axiom`
 // means "take my word for it"; the other three are claims the checker is meant
 // to verify, and until it can, saying so would be a lie.
-const IMPLEMENTED_DIRECTIVES = ["axiom", "inductive", "intro"];
-const PLANNED_DIRECTIVES = ["rec"];
+const IMPLEMENTED_DIRECTIVES = ["axiom", "inductive", "intro", "rec"];
+const PLANNED_DIRECTIVES: string[] = [];
+
+
+// ---------------------------------------------------------------------------
+// Recursors
+//
+// Checking that a written recursor is *the* recursor means deriving the
+// canonical one and comparing. The derivation is done locally nameless: each
+// binder is opened into a fresh global whose name cannot be written in the
+// language, so the recursor is assembled without any de Bruijn arithmetic, and
+// closing it puts the indices back.
+// ---------------------------------------------------------------------------
+
+let next_sentinel = 0;
+function sentinel(): Expr {
+	return { type: "global", ident: `#${next_sentinel++}`, tokens: [] };
+}
+
+type Binder = { v: Expr; dom: Expr };
+
+// Opens a pi telescope. `values` replaces the outermost binders, so a
+// constructor can be opened against the recursor's own parameters.
+function open_telescope(
+	ty: Expr,
+	values: Expr[] = [],
+): { binders: Binder[]; body: Expr } {
+	const binders: Binder[] = [];
+	let cur = ty;
+	let i = 0;
+	while (cur.type === "pi") {
+		const v = values[i] ?? sentinel();
+		binders.push({ v, dom: cur.head });
+		cur = app_subst_new_refs(cur.tail, v);
+		i++;
+	}
+	return { binders, body: cur };
+}
+
+// Turns a sentinel back into a bound variable. Depth counts the binders
+// between here and the pi being built.
+function abstract_var(expr: Expr, name: string, depth = 1): Expr {
+	if (expr.type === "global") {
+		return expr.ident === name
+			? { type: "ref", index: depth, tokens: [] }
+			: expr;
+	} else if (expr.type === "application") {
+		return {
+			type: "application",
+			fun: abstract_var(expr.fun, name, depth),
+			value: abstract_var(expr.value, name, depth),
+			tokens: [],
+		};
+	} else if (expr.type === "pi" || expr.type === "lambda") {
+		return {
+			type: expr.type,
+			head: abstract_var(expr.head, name, depth),
+			tail: abstract_var(expr.tail, name, depth + 1),
+			tokens: [],
+		};
+	}
+	return expr;
+}
+
+function close_pi(binders: Binder[], body: Expr): Expr {
+	let out = body;
+	for (let i = binders.length - 1; i >= 0; i--) {
+		const b = binders[i]!;
+		out = {
+			type: "pi",
+			head: b.dom,
+			tail: abstract_var(out, (b.v as Expr & { type: "global" }).ident),
+			tokens: [],
+		};
+	}
+	return out;
+}
+
+function apply(fun: Expr, args: Expr[]): Expr {
+	let out = fun;
+	for (const arg of args) {
+		out = { type: "application", fun: out, value: arg, tokens: [] };
+	}
+	return out;
+}
+
+// The arguments of `X a b c`, left to right.
+function spine_args(expr: Expr): Expr[] {
+	const args: Expr[] = [];
+	let cur = expr;
+	while (cur.type === "application") {
+		args.unshift(cur.value);
+		cur = cur.fun;
+	}
+	return args;
+}
+
+// The parameters are the leading binders every constructor shares and passes
+// to the type unchanged; everything after them is an index.
+function count_params(globals: Globals, ind: string, ind_binders: Binder[]): number {
+	const ctors = globals[ind]!.inductive!.constructors;
+	let limit = ind_binders.length;
+	for (const c of ctors) {
+		const { binders } = open_telescope(globals[c]!.ty);
+		limit = Math.min(limit, binders.length);
+	}
+	for (let k = limit; k > 0; k--) {
+		const params = ind_binders.slice(0, k).map((b) => b.v);
+		const ok = ctors.every((c) => {
+			const { body } = open_telescope(globals[c]!.ty, params);
+			const args = spine_args(body);
+			return (
+				args.length >= k &&
+				params.every((p, i) => struct_eq(null, args[i]!, p))
+			);
+		});
+		if (ok) return k;
+	}
+	return 0;
+}
+
+// A Prop may only eliminate into a bigger sort when it is a subsingleton: at
+// most one constructor, all of whose non parameter fields are themselves
+// proofs. Without this, `Prop.Or.rec` into Type would let a proof decide which
+// side it came from, and Prop would stop being irrelevant.
+function check_elimination_allowed(
+	globals: Globals,
+	ind: string,
+	ind_sort: Expr,
+	motive_sort: Expr,
+	num_params: number,
+) {
+	if (sort_index(ind_sort) !== 0) return;
+	if (sort_index(motive_sort) === 0) return;
+	const ctors = globals[ind]!.inductive!.constructors;
+	if (ctors.length > 1) {
+		throw new Error(
+			`@rec(${ind}): ${ind} is a Prop with ${ctors.length} constructors, so it may only eliminate into Prop`,
+		);
+	}
+	for (const c of ctors) {
+		const { binders } = open_telescope(globals[c]!.ty);
+		for (const field of binders.slice(num_params)) {
+			let field_sort: Expr;
+			try {
+				field_sort = type_of(globals, field.dom, {});
+			} catch {
+				throw new Error(
+					`@rec(${ind}): cannot tell whether '${c}' carries data, so it may only eliminate into Prop`,
+				);
+			}
+			if (sort_index(field_sort) !== 0) {
+				throw new Error(
+					`@rec(${ind}): '${c}' carries data, so ${ind} may only eliminate into Prop`,
+				);
+			}
+		}
+	}
+}
+
+// The recursor for a single, non mutual inductive, at the motive sort the
+// declaration asked for.
+function derive_recursor(
+	globals: Globals,
+	ind: string,
+	motive_sort: Expr,
+): Expr {
+	const ind_ty = globals[ind]!.ty;
+	const { binders: ind_binders, body: ind_sort } = open_telescope(ind_ty);
+	const num_params = count_params(globals, ind, ind_binders);
+	const params = ind_binders.slice(0, num_params);
+	const indices = ind_binders.slice(num_params);
+	const ctors = globals[ind]!.inductive!.constructors;
+
+	check_elimination_allowed(globals, ind, ind_sort, motive_sort, num_params);
+
+	const ind_const: Expr = { type: "global", ident: ind, tokens: [] };
+	const param_vars = params.map((b) => b.v);
+
+	// motive : (i.. : I..) -> X p.. i.. -> <sort>
+	const major: Binder = {
+		v: sentinel(),
+		dom: apply(ind_const, [...param_vars, ...indices.map((b) => b.v)]),
+	};
+	const motive: Binder = {
+		v: sentinel(),
+		dom: close_pi([...indices, major], motive_sort),
+	};
+	const motive_at = (idx: Expr[], target: Expr) =>
+		apply(motive.v, [...idx, target]);
+
+	const minors: Binder[] = ctors.map((c) => {
+		const { binders, body } = open_telescope(globals[c]!.ty, param_vars);
+		const fields = binders.slice(num_params);
+		const ctor_indices = spine_args(body).slice(num_params);
+		const built = apply(
+			{ type: "global", ident: c, tokens: [] },
+			binders.map((b) => b.v),
+		);
+
+		// an induction hypothesis for every field that lands back in X
+		const hypotheses: Binder[] = [];
+		for (const field of fields) {
+			const { binders: inner, body: inner_body } = open_telescope(field.dom);
+			const head = head_of(inner_body);
+			if (!(head.type === "global" && head.ident === ind)) continue;
+			const inner_indices = spine_args(inner_body).slice(num_params);
+			hypotheses.push({
+				v: sentinel(),
+				dom: close_pi(
+					inner,
+					motive_at(
+						inner_indices,
+						apply(field.v, inner.map((b) => b.v)),
+					),
+				),
+			});
+		}
+
+		return {
+			v: sentinel(),
+			dom: close_pi(
+				[...fields, ...hypotheses],
+				motive_at(ctor_indices, built),
+			),
+		};
+	});
+
+	return close_pi(
+		[...params, motive, ...minors, ...indices, major],
+		motive_at(indices.map((b) => b.v), major.v),
+	);
+}
+
+// @rec(X): the declared type has to be the recursor for X. The motive's sort is
+// read off the declaration rather than derived, since this language has no
+// universe polymorphism and states X.rec and X.rec_prop separately.
+function check_recursor(globals: Globals, ind: string, ty: Expr, name: string) {
+	const target = globals[ind];
+	if (!target?.inductive) {
+		throw new Error(`@rec(${ind}): ${ind} is not an @inductive type`);
+	}
+	const { binders: ind_binders } = open_telescope(target.ty);
+	const num_params = count_params(globals, ind, ind_binders);
+
+	const { binders } = open_telescope(ty);
+	const motive = binders[num_params];
+	if (motive === undefined) {
+		throw new Error(`@rec(${ind}): '${name}' has no motive`);
+	}
+	const { body: motive_sort } = open_telescope(motive.dom);
+	if (sort_index(motive_sort) < 0) {
+		throw new Error(
+			`@rec(${ind}): the motive of '${name}' has to end in a sort`,
+		);
+	}
+
+	const derived = derive_recursor(globals, ind, motive_sort);
+	if (!struct_eq(globals, ty, derived)) {
+		throw new Error(
+			`@rec(${ind}): '${name}' is not the recursor for ${ind}. Expected\n  ${print_expr(derived)}`,
+		);
+	}
+}
 
 function occurs(name: string, expr: Expr): boolean {
 	if (expr.type === "global") return expr.ident === name;
@@ -739,6 +1001,13 @@ function check_inductive_markers(
 					`@inductive '${name}' has to end in a sort to be a type`,
 				);
 			}
+		} else if (directive.name === "rec") {
+			if (directive.arg === null) {
+				throw new Error(
+					"@rec needs the type it eliminates, as @rec(Nat)",
+				);
+			}
+			check_recursor(globals, directive.arg, ty, name);
 		} else if (directive.name === "intro") {
 			const ind = directive.arg;
 			if (ind === null) {

@@ -6,7 +6,7 @@ Nat : Type;
 Nat.zero : Nat;
 @intro(Nat)
 Nat.succ : Nat -> Nat;
-@axiom
+@rec(Nat)
 Nat.rec :
 	(motive : Nat -> Type) ->
 	(case_zero : motive Nat.zero) ->

@@ -4,7 +4,7 @@
 Eq : (A : Type) -> (a : A) -> (b : A) -> Prop;
 @intro(Eq)
 Eq.refl : (A : Type) -> (x : A) -> Eq A x x;
-@axiom
+@rec(Eq)
 Eq.rec :
 	(A : Type) ->
 	(a : A) ->

@@ -4,29 +4,29 @@ Int : Type;
 Int.nat : Nat -> Int;
 @intro(Int)
 Int.neg_succ : Nat -> Int;
-@axiom
+@rec(Int)
 Int.rec :
     (motive : Int -> Type) ->
-    (case_nat : (n : Nat) -> motive (Int.nat n) -> motive (Int.nat n)) ->
-    (case_neg_succ : (n : Nat) -> motive (Int.neg_succ n) -> motive (Int.neg_succ n)) ->
+    (case_nat : (n : Nat) -> motive (Int.nat n)) ->
+    (case_neg_succ : (n : Nat) -> motive (Int.neg_succ n)) ->
     (target : Int) ->
     motive target;
 
 Int.rec_prop :
     (motive : Int -> Prop) ->
-    (case_nat : (n : Nat) -> motive (Int.nat n) -> motive (Int.nat n)) ->
-    (case_neg_succ : (n : Nat) -> motive (Int.neg_succ n) -> motive (Int.neg_succ n)) ->
+    (case_nat : (n : Nat) -> motive (Int.nat n)) ->
+    (case_neg_succ : (n : Nat) -> motive (Int.neg_succ n)) ->
     (target : Int) ->
     motive target :=
     (motive : Int -> Prop) =>
-    (case_nat : (n : Nat) -> motive (Int.nat n) -> motive (Int.nat n)) =>
-    (case_neg_succ : (n : Nat) -> motive (Int.neg_succ n) -> motive (Int.neg_succ n)) =>
+    (case_nat : (n : Nat) -> motive (Int.nat n)) =>
+    (case_neg_succ : (n : Nat) -> motive (Int.neg_succ n)) =>
     (target : Int) =>
     Lift.elim (motive target)
       (Int.rec
         ((x : Int) => Lift (motive x))
-        ((n : Nat) => (ih : Lift (motive (Int.nat n))) => Lift.intro (motive (Int.nat n)) (case_nat n (Lift.elim (motive (Int.nat n)) ih)))
-        ((n : Nat) => (ih : Lift (motive (Int.neg_succ n))) => Lift.intro (motive (Int.neg_succ n)) (case_neg_succ n (Lift.elim (motive (Int.neg_succ n)) ih)))
+        ((n : Nat) => Lift.intro (motive (Int.nat n)) (case_nat n))
+        ((n : Nat) => Lift.intro (motive (Int.neg_succ n)) (case_neg_succ n))
         target);
 
 @axiom
