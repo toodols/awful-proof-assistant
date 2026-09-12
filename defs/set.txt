@@ -1,0 +1,82 @@
+@require "prop.txt"
+@require "equality.txt"
+@require "peano.txt"
+
+// A set over A is a predicate on A.
+Set : (A : Type) -> Type := (A : Type) => A -> Prop;
+
+zero_set : Set Nat := (x : Nat) => Eq Nat x Nat.zero;
+
+// f never sends two arguments to the same place.
+// A pi into Prop is a Prop, so this is a definition rather than an axiom: a
+// proof of `Injective A B f` *is* the function that turns `f a = f b` into
+// `a = b`, so it needs no intro and no eliminator.
+Injective : (A : Type) -> (B : Type) -> (f : A -> B) -> Prop :=
+	(A : Type) => (B : Type) => (f : A -> B) =>
+	(a : A) -> (b : A) -> Eq B (f a) (f b) -> Eq A a b;
+
+// f reaches every b in B.
+Surjective : (A : Type) -> (B : Type) -> (f : A -> B) -> Prop :=
+	(A : Type) => (B : Type) => (f : A -> B) =>
+	(b : B) -> Exists A ((a : A) => Eq B (f a) b);
+
+Bijective : (A : Type) -> (B : Type) -> (f : A -> B) -> Prop :=
+	(A : Type) => (B : Type) => (f : A -> B) =>
+	Prop.And (Injective A B f) (Surjective A B f);
+
+Bijective.intro : (A : Type) -> (B : Type) -> (f : A -> B) ->
+	Injective A B f -> Surjective A B f -> Bijective A B f :=
+	(A : Type) => (B : Type) => (f : A -> B) =>
+	(inj : Injective A B f) => (sur : Surjective A B f) =>
+	Prop.And.intro (Injective A B f) (Surjective A B f) inj sur;
+
+// There are no sigma types here, so a bijection between A and B is the
+// proposition that a bijective function exists. That is all cardinality needs:
+// it never has to take the function back out.
+Bijection : (A : Type) -> (B : Type) -> Prop :=
+	(A : Type) => (B : Type) =>
+	Exists (A -> B) ((f : A -> B) => Bijective A B f);
+
+Bijection.intro : (A : Type) -> (B : Type) -> (f : A -> B) ->
+	Bijective A B f -> Bijection A B :=
+	(A : Type) => (B : Type) => (f : A -> B) => (bij : Bijective A B f) =>
+	Exists.intro (A -> B) ((g : A -> B) => Bijective A B g) f bij;
+
+// The identity function is injective and surjective, so every type stands in
+// bijection with itself.
+Bijection.refl : (A : Type) -> Bijection A A :=
+	(A : Type) =>
+	Bijection.intro A A ((a : A) => a)
+		(Bijective.intro A A ((a : A) => a)
+			((a : A) => (b : A) => (h : Eq A a b) => h)
+			((b : A) =>
+				Exists.intro A ((a : A) => Eq A a b) b (Eq.refl A b)));
+
+// Cardinality. Two types have the same cardinal exactly when a bijection
+// between them exists; `Cardinal.eq` is what makes `Cardinal` mean anything.
+@axiom
+Cardinal : Type;
+@axiom
+Cardinal.of : (A : Type) -> Cardinal;
+@axiom
+Cardinal.eq : (A : Type) -> (B : Type) -> Bijection A B ->
+	Eq Cardinal (Cardinal.of A) (Cardinal.of B);
+
+Cardinal.refl : (A : Type) -> Eq Cardinal (Cardinal.of A) (Cardinal.of A) :=
+	(A : Type) => Cardinal.eq A A (Bijection.refl A);
+
+// The cardinality of a *set* is the cardinality of the type of its members, so
+// it needs the subtype carved out by a predicate. No such type former exists
+// here, so state one: `Sub A s` is the members of A that satisfy s.
+@axiom
+Sub : (A : Type) -> (s : Set A) -> Type;
+@axiom
+Sub.intro : (A : Type) -> (s : Set A) -> (a : A) -> s a -> Sub A s;
+@axiom
+Sub.val : (A : Type) -> (s : Set A) -> Sub A s -> A;
+@axiom
+Sub.property : (A : Type) -> (s : Set A) -> (x : Sub A s) ->
+	s (Sub.val A s x);
+
+Set.Card : (A : Type) -> Set A -> Cardinal :=
+	(A : Type) => (s : Set A) => Cardinal.of (Sub A s);

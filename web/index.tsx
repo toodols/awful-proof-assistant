@@ -50,7 +50,7 @@ const Render = ({
 				toktype = "comment";
 			} else if (token.type === "string") {
 				toktype = "string";
-			} else if (token.type === "@require") {
+			} else if (token.type === "@require" || token.type === "directive") {
 				toktype = "directive";
 			}
 			return (

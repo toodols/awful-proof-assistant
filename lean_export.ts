@@ -43,9 +43,10 @@
  * How this language maps onto Lean:
  *
  *   Prop           ->  Sort 0
- *   Type           ->  Sort 1. This language has no universe hierarchy, so
- *                      `Type : Type` holds here but not in Lean; a declaration
- *                      that actually leans on that will be rejected downstream.
+ *   Type           ->  Sort 1
+ *   Type1          ->  Sort 2, where Type lives. The ladder stops there, so a
+ *                      declaration that needs a universe above Type1 has no
+ *                      counterpart and will be rejected downstream.
  *   `x : T;`       ->  #AX  x : T
  *   `x : T := v;`  ->  #DEF x : T := v
  *   `f a b : T := v;`  a single fully applied rule whose arguments are all
@@ -92,6 +93,7 @@ export type Core =
 
 const SORT_PROP: Core = { k: "sort", level: { k: "num", n: 0 } };
 const SORT_TYPE: Core = { k: "sort", level: { k: "num", n: 1 } };
+const SORT_TYPE1: Core = { k: "sort", level: { k: "num", n: 2 } };
 
 const SORRY = "SORRY";
 
@@ -398,6 +400,7 @@ function resolve(env: Env, expr: Expr, bound: (string | null)[]): Core {
 			}
 		}
 		if (expr.ident === "Type") return SORT_TYPE;
+		if (expr.ident === "Type1") return SORT_TYPE1;
 		if (expr.ident === "Prop") return SORT_PROP;
 		if (expr.ident === SORRY) {
 			// a bare SORRY with nothing applied; default to the Type level

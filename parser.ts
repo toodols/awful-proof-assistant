@@ -70,6 +70,17 @@ export type Statement = {
 	pat: Expr;
 	ty: Expr;
 	def: Expr | null;
+	// `@axiom`, `@inductive`, `@intro(Nat)`, `@rec(Nat)`: what a declaration
+	// without a `:=` is claiming to be. `@require` is not one of these; it is a
+	// file level directive and never attaches to a statement.
+	directives: Directive[];
+};
+
+export type Directive = {
+	name: string;
+	// the `Nat` in `@intro(Nat)`, if the directive was given one
+	arg: string | null;
+	tokens: Token[];
 };
 
 export type Program = {
@@ -86,6 +97,13 @@ export type Token =
 			raw: string;
 	  }
 	| { type: "@require"; start: number; end: number; raw: string }
+	| {
+			type: "directive";
+			name: string;
+			start: number;
+			end: number;
+			raw: string;
+	  }
 	| { type: "string"; start: number; end: number; raw: string; value: string }
 	| { type: "whitespace"; start: number; end: number; raw: string }
 	| {
@@ -177,6 +195,24 @@ export function lex(text: string, start: number): [Token, number] {
 				start,
 				end,
 				raw: directive[0],
+			},
+			end,
+		];
+	}
+
+	// any other @name; @require is matched above and stays its own token
+	const named_directive_regex = /@([A-Za-z_][A-Za-z0-9_]*)\b/y;
+	named_directive_regex.lastIndex = start;
+	const named = named_directive_regex.exec(text);
+	if (named) {
+		const end = start + named[0].length;
+		return [
+			{
+				type: "directive",
+				name: named[1]!,
+				start,
+				end,
+				raw: named[0],
 			},
 			end,
 		];
@@ -394,8 +430,31 @@ export function parse_expression(tokens: TokenStream): Expr {
 	return result;
 }
 
+// `@intro(Nat)` needs its parentheses: without them `@intro Nat` followed by
+// `Nat.zero : Nat;` cannot be told apart from `@intro` applied to nothing.
+function parse_directives(tokens: TokenStream): Directive[] {
+	const directives: Directive[] = [];
+	let token = peek_token(tokens);
+	while (token?.type === "directive") {
+		const name = token.name;
+		const collected: Token[] = [expect_token(tokens, "directive")];
+		let arg: string | null = null;
+		if (peek_token(tokens)?.type === "(") {
+			collected.push(expect_token(tokens, "("));
+			const ident = expect_token(tokens, "ident");
+			collected.push(ident);
+			collected.push(expect_token(tokens, ")"));
+			arg = ident.ident;
+		}
+		directives.push({ name, arg, tokens: collected });
+		token = peek_token(tokens);
+	}
+	return directives;
+}
+
 export function parse_statement(tokens: TokenStream): Statement {
 	// const ident = expect_token(tokens, "ident");
+	const directives = parse_directives(tokens);
 	const expr = parse_expression(tokens);
 	expect_token(tokens, ":");
 	const ty = parse_expression(tokens);
@@ -407,7 +466,7 @@ export function parse_statement(tokens: TokenStream): Statement {
 	expect_token(tokens, ";");
 	// statement should start with ident. first will error if not
 	first_ident(expr);
-	return { type: "statement", pat: expr, ty, def };
+	return { type: "statement", pat: expr, ty, def, directives };
 }
 
 export function parse_program(tokens: TokenStream): Program {

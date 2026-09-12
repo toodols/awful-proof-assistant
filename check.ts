@@ -10,6 +10,24 @@ type Globals = {
 };
 const error_ty = { type: "error" as const, tokens: [] as Token[] };
 
+// The universes, smallest first: `Prop` is 0, `Type` is 1, `Type1` is 2.
+// `Type : Type1` and `Type1` is the top of the ladder, so nothing types it -
+// which is what keeps `Type : Type` from being provable here.
+const SORT_NAMES = ["Prop", "Type", "Type1"];
+
+// The universe an expression names, or -1 if it does not name one.
+function sort_index(expr: Expr): number {
+	return expr.type === "global" ? SORT_NAMES.indexOf(expr.ident) : -1;
+}
+
+function sort_at(index: number): Expr {
+	return {
+		type: "global",
+		ident: SORT_NAMES[index] ?? SORT_NAMES[SORT_NAMES.length - 1]!,
+		tokens: [],
+	};
+}
+
 // An opaque value of type `ty`, standing for a binder we cannot see inside of.
 // Every call mints a fresh identity, so `(A : Type) -> (B : Type) -> A -> B`
 // does not accept an `A` where it asked for a `B`.
@@ -21,7 +39,17 @@ function opaque(ty: Expr): Expr {
 export function new_globals() {
 	const globals: Globals = {};
 
-	globals.Type = { ty: error_ty, def: null, rules: [] };
+	// Type1 tops out the ladder and has no type of its own
+	globals.Type1 = { ty: error_ty, def: null, rules: [] };
+	globals.Type = {
+		ty: {
+			type: "global",
+			ident: "Type1",
+			tokens: [],
+		},
+		def: null,
+		rules: [],
+	};
 	globals.Prop = {
 		ty: {
 			type: "global",
@@ -233,6 +261,11 @@ function type_of(
 		if (!def) {
 			throw new Error(`${value.ident} not defined`);
 		}
+		if (def.ty.type === "error") {
+			throw new Error(
+				`${value.ident} is the top universe, so it has no type`,
+			);
+		}
 		return def.ty;
 	} else if (value.type === "lambda") {
 		// type of lambda is that but pi
@@ -246,8 +279,9 @@ function type_of(
 		ref_tys.pop();
 		return res;
 	} else if (value.type === "pi") {
-		// A pi lands in Prop whenever its codomain does, however big the
-		// domain is - impredicativity, Lean's `imax` with only two sorts.
+		// `(x : A) -> B` lives in Sort (imax u v): in Prop whenever B is,
+		// however big A is - impredicativity - and otherwise in whichever of
+		// the two universes is larger.
 		ref_tys.push(value.head);
 		let tail_ty: Expr;
 		try {
@@ -255,11 +289,17 @@ function type_of(
 		} finally {
 			ref_tys.pop();
 		}
-		const sort =
-			tail_ty.type === "global" && tail_ty.ident === "Prop"
-				? "Prop"
-				: "Type";
-		return { type: "global", ident: sort, tokens: [] };
+		const v = sort_index(tail_ty);
+		if (v === 0) return sort_at(0);
+		// the domain is typed outside its own binder, so ref_tys is popped
+		let u = -1;
+		try {
+			u = sort_index(type_of(globals, value.head, inner_defs, ref_tys));
+		} catch {
+			// a domain whose type we cannot work out cannot raise the
+			// universe either; check_is_type is what rejects a bad one
+		}
+		return sort_at(Math.max(u, v, 1));
 	} else if (value.type === "ref") {
 		// only lambda can introduce expressions to ref in type_of so no conflicts with pi
 		// however the ref could be referring to another ref
@@ -374,17 +414,18 @@ function app_subst_new_refs(tail: Expr, value: Expr, depth = 1): Expr {
 // aka beta reduction. reduces expressions of the form `(A => B) a`
 function reduce_simp_app(expr: Expr): Expr {
 	if (expr.type === "application") {
-		if (expr.fun.type === "lambda") {
-			return reduce_simp_app(
-				app_subst_new_refs(expr.fun.tail, reduce_simp_app(expr.value)),
-			);
-		} else if (expr.fun.type === "value_with_type") {
-			if (expr.fun.ty.type === "pi") {
+		// the function has to be reduced first: in `f a b`, reducing `f a` is
+		// what turns the outer application into a redex at all, which is how a
+		// global that unfolds to several nested lambdas gets applied to all of
+		// its arguments
+		const fun = reduce_simp_app(expr.fun);
+		const value = reduce_simp_app(expr.value);
+		if (fun.type === "lambda") {
+			return reduce_simp_app(app_subst_new_refs(fun.tail, value));
+		} else if (fun.type === "value_with_type") {
+			if (fun.ty.type === "pi") {
 				return reduce_simp_app(
-					app_subst_new_refs(
-						expr.fun.ty.tail,
-						reduce_simp_app(expr.value),
-					),
+					app_subst_new_refs(fun.ty.tail, value),
 				);
 			} else {
 				throw new Error("idk");
@@ -392,8 +433,8 @@ function reduce_simp_app(expr: Expr): Expr {
 		} else {
 			return {
 				type: "application",
-				fun: reduce_simp_app(expr.fun),
-				value: reduce_simp_app(expr.value),
+				fun,
+				value,
 				tokens: [],
 			};
 		}
@@ -591,25 +632,65 @@ function check_is_type(
 	globals: Globals,
 	ty: Expr,
 	inner_defs: Record<string, Expr>,
+	// \i : ref[i]
+	ref_tys: Expr[] = [],
 ) {
-	if (ty.type === "global" && (ty.ident === "Type" || ty.ident === "Prop")) {
+	if (ty.type === "pi") {
+		// `(x : A) -> B` is a type only if both halves are. Reading the sort off
+		// the codomain alone would never look at A, which is where a term that
+		// is not a type at all tends to be written by mistake.
+		check_is_type(globals, ty.head, inner_defs, ref_tys);
+		ref_tys.push(ty.head);
+		try {
+			check_is_type(globals, ty.tail, inner_defs, ref_tys);
+		} finally {
+			ref_tys.pop();
+		}
 		return;
 	}
+	if (sort_index(ty) >= 0) return;
 	if (ty.type === "any" || ty.type === "sorry") return;
-	const sort = type_of(globals, ty, inner_defs);
-	if (
-		!(
-			sort.type === "global" &&
-			(sort.ident === "Type" || sort.ident === "Prop")
-		)
-	) {
+	const sort = type_of(globals, ty, inner_defs, ref_tys);
+	if (sort_index(sort) < 0) {
 		throw new Error(
 			`${print_expr(ty)} is not a type: it has type ${print_expr(sort)}`,
 		);
 	}
 }
 
+// What a declaration with no `:=` is allowed to claim to be. Only `@axiom`
+// means "take my word for it"; the other three are claims the checker is meant
+// to verify, and until it can, saying so would be a lie.
+const IMPLEMENTED_DIRECTIVES = ["axiom"];
+const PLANNED_DIRECTIVES = ["inductive", "intro", "rec"];
+
+function check_directives(stmt: Statement) {
+	const name = first_ident(stmt.pat).ident;
+	for (const directive of stmt.directives) {
+		if (PLANNED_DIRECTIVES.includes(directive.name)) {
+			throw new Error(
+				`@${directive.name} is not checked yet, so '${name}' may not claim it`,
+			);
+		}
+		if (!IMPLEMENTED_DIRECTIVES.includes(directive.name)) {
+			throw new Error(`'${name}' has an unknown directive @${directive.name}`);
+		}
+	}
+	if (stmt.def === null && stmt.pat.type === "ident") {
+		if (stmt.directives.length === 0) {
+			throw new Error(
+				`'${name}' has no definition, so it is an assumption: mark it @axiom`,
+			);
+		}
+	} else if (stmt.directives.length > 0) {
+		throw new Error(
+			`'${name}' is defined, so it is not an assumption: drop the @${stmt.directives[0]!.name}`,
+		);
+	}
+}
+
 export function check_stmt(globals: Globals, stmt: Statement) {
+	check_directives(stmt);
 	let refs: Expr[] = [];
 	let inner_defs: Record<string, Expr> = {};
 	let def_names: string[] = [];
@@ -628,7 +709,12 @@ export function check_stmt(globals: Globals, stmt: Statement) {
 
 	check_is_type(globals, ty, inner_defs);
 
-	const def = stmt.def ? norm_names(globals, stmt.def, inner_defs) : null;
+	// reduced like the type above: unfolding a global leaves a redex behind, and
+	// a binder type inside the value has to end up in the same shape as the
+	// declared type it is compared against
+	const def = stmt.def
+		? reduce_simp_app(norm_names(globals, stmt.def, inner_defs))
+		: null;
 
 	if (def) {
 		if (!member_of(globals, def, ty, inner_defs)) {

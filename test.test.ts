@@ -17,6 +17,7 @@ test("pattern matching", async () => {
 	const statements = await expand(
 		"main.txt",
 		async (path) => `
+		@axiom
 		left : ( A : Type ) -> A -> A -> A;
 		left A a b : A := a;
 		`,
@@ -31,6 +32,7 @@ test("a pi into Prop is a Prop", async () => {
 	const statements = await expand(
 		"main.txt",
 		async () => `
+		@axiom
 		Nat : Type;
 		imp : Nat -> Prop -> Prop := (n : Nat) => (P : Prop) => P -> P;
 		`,
@@ -43,6 +45,7 @@ test("pattern variables are not confused with each other", async () => {
 	const statements = await expand(
 		"main.txt",
 		async () => `
+		@axiom
 		f : ( A : Type ) -> ( B : Type ) -> A -> B;
 		f A B a : B := a;
 		`,
@@ -50,6 +53,133 @@ test("pattern variables are not confused with each other", async () => {
 	const globals = new_globals();
 	// `a : A` is not a `B`, even though A and B are both opaque values of Type
 	expect(() => check_program(globals, statements)).toThrow();
+});
+
+// A declaration's type is the one thing nothing else looks at when there is no
+// definition, so both halves of every arrow in it have to be checked.
+test("a term cannot stand where a type belongs", async () => {
+	const statements = await expand(
+		"main.txt",
+		async () => `
+		@axiom
+		Nat : Type;
+		@axiom
+		Foo : ( A : Type ) -> A -> Prop;
+		@axiom
+		bad : ( A : Type ) -> Foo A -> Nat;
+		`,
+	);
+	const globals = new_globals();
+	// `Foo A` is a predicate, of type `A -> Prop`, not a type
+	expect(() => check_program(globals, statements)).toThrow();
+});
+
+test("a defined global applied to several arguments unfolds", async () => {
+	const statements = await expand(
+		"main.txt",
+		async () => `
+		@axiom
+		Nat : Type;
+		@axiom
+		Eq : ( A : Type ) -> ( a : A ) -> ( b : A ) -> Prop;
+		@axiom
+		Eq.refl : ( A : Type ) -> ( x : A ) -> Eq A x x;
+		Fixes : ( A : Type ) -> ( f : A -> A ) -> Prop :=
+			(A : Type) => (f : A -> A) => (a : A) -> Eq A (f a) (f a);
+		id_fixes : Fixes Nat ((n : Nat) => n) := (a : Nat) => Eq.refl Nat a;
+		`,
+	);
+	const globals = new_globals();
+	// `Fixes Nat (n => n)` has to unfold and reduce all the way to
+	// `(a : Nat) -> Eq Nat a a`, past both of its arguments
+	expect(() => check_program(globals, statements)).not.toThrow();
+});
+
+// Prop : Type : Type1, and the ladder stops there.
+test("Type lives in Type1", async () => {
+	const statements = await expand("main.txt", async () => `t : Type1 := Type;`);
+	expect(() => check_program(new_globals(), statements)).not.toThrow();
+});
+
+test("Type does not live in itself", async () => {
+	const statements = await expand("main.txt", async () => `t : Type := Type;`);
+	expect(() => check_program(new_globals(), statements)).toThrow();
+});
+
+test("a pi is as big as its largest half", async () => {
+	const statements = await expand(
+		"main.txt",
+		async () => `
+		@axiom
+		Nat : Type;
+		motive_ty : Type1 := Nat -> Type;
+		`,
+	);
+	// `Nat -> Type` is a Type1, not a Type: max(1, 2)
+	expect(() => check_program(new_globals(), statements)).not.toThrow();
+
+	const too_small = await expand(
+		"main.txt",
+		async () => `
+		@axiom
+		Nat : Type;
+		motive_ty : Type := Nat -> Type;
+		`,
+	);
+	expect(() => check_program(new_globals(), too_small)).toThrow();
+});
+
+test("Prop stays impredicative", async () => {
+	const statements = await expand(
+		"main.txt",
+		async () => `
+		@axiom
+		Nat : Type;
+		imp : Nat -> Prop -> Prop := (n : Nat) => (P : Prop) => (A : Type) -> P;
+		`,
+	);
+	// quantifying over Type still lands in Prop, because the codomain does
+	expect(() => check_program(new_globals(), statements)).not.toThrow();
+});
+
+test("Type1 exports as Sort 2", async () => {
+	const statements = await expand("main.txt", async () => `t : Type1 := Type;`);
+	const result = export_to_lean(statements, { format: "json" });
+	const lines = result.text.trim().split("\n").map((l) => JSON.parse(l));
+	// Sort 2 needs two successors of the universe zero at index 0
+	expect(lines).toContainEqual({ il: 1, succ: 0 });
+	expect(lines).toContainEqual({ il: 2, succ: 1 });
+	expect(lines.some((l) => l.sort === 2)).toBe(true);
+});
+
+// A declaration with no `:=` is an assumption, and has to say so.
+test("an assumption has to say so", async () => {
+	const check = async (source: string) => {
+		const statements = await expand("main.txt", async () => source);
+		return () => check_program(new_globals(), statements);
+	};
+	expect(await check(`Nat : Type;`)).toThrow();
+	expect(await check(`@axiom\nNat : Type;`)).not.toThrow();
+	// the marker is a claim about the declaration, so it may not contradict it
+	expect(await check(`@axiom\nt : Type := Prop;`)).toThrow();
+	// claiming a check that does not exist yet is worse than not claiming it
+	expect(await check(`@intro(Nat)\nNat : Type;`)).toThrow();
+	expect(await check(`@nonsense\nNat : Type;`)).toThrow();
+});
+
+// The point of the marker: the trust base is greppable, and it matches what the
+// exporter reports. A proof using SORRY would add an axiom with no declaration
+// of its own to mark, which is the one hole in this.
+test("every axiom in the export is marked in the source", async () => {
+	const statements = await expand(
+		"./defs/main.txt",
+		async (path) => await Bun.file(path).text(),
+	);
+	const result = export_to_lean(statements);
+	const marked = statements.filter((s) =>
+		s.directives.some((d) => d.name === "axiom"),
+	).length;
+	expect(marked).toBe(result.axioms);
 });
 
 test("parse_directive", () => {
@@ -134,6 +264,7 @@ test("a single full arity rule exports as a definition", async () => {
 	const statements = await expand(
 		"main.txt",
 		async () => `
+		@axiom
 		left : ( A : Type ) -> A -> A -> A;
 		left A a b : A := a;
 		`,
@@ -151,9 +282,13 @@ test("real pattern matching stays an axiom", async () => {
 	const statements = await expand(
 		"main.txt",
 		async () => `
+		@axiom
 		Nat : Type;
+		@axiom
 		Nat.zero : Nat;
+		@axiom
 		Nat.succ : Nat -> Nat;
+		@axiom
 		Pred : Nat -> Nat;
 		Pred Nat.zero : Nat := Nat.zero;
 		Pred (Nat.succ n) : Nat := n;
@@ -168,7 +303,9 @@ test("SORRY is instantiated at the universe of what it proves", async () => {
 	const statements = await expand(
 		"main.txt",
 		async () => `
+		@axiom
 		Nat : Type;
+		@axiom
 		Eq : (A : Type) -> A -> A -> Prop;
 		prop_level : (x : Nat) -> Eq Nat x x := (x : Nat) => SORRY (Eq Nat x x);
 		type_level : Nat := SORRY Nat;
