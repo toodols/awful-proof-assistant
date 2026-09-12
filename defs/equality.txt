@@ -1,7 +1,10 @@
 @require "prop.txt"
 
+@axiom
 Eq : (A : Type) -> (a : A) -> (b : A) -> Prop;
+@axiom
 Eq.refl : (A : Type) -> (x : A) -> Eq A x x;
+@axiom
 Eq.rec :
 	(A : Type) ->
 	(a : A) ->

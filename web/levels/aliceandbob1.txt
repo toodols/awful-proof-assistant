@@ -1,6 +1,9 @@
+@axiom
 Hero : Type;
 
+@axiom
 alice : Hero;
+@axiom
 bob : Hero;
 // who is your hero?
 your_hero : Hero := <INPUT>;

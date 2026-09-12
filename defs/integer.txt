@@ -1,6 +1,10 @@
+@axiom
 Int : Type;
+@axiom
 Int.nat : Nat -> Int;
+@axiom
 Int.neg_succ : Nat -> Int;
+@axiom
 Int.rec :
     (motive : Int -> Type) ->
     (case_nat : (n : Nat) -> motive (Int.nat n) -> motive (Int.nat n)) ->
@@ -25,8 +29,10 @@ Int.rec_prop :
         ((n : Nat) => (ih : Lift (motive (Int.neg_succ n))) => Lift.intro (motive (Int.neg_succ n)) (case_neg_succ n (Lift.elim (motive (Int.neg_succ n)) ih)))
         target);
 
+@axiom
 Int.Add : Int -> Int -> Int;
 
+@axiom
 Int.Add.add_nat_nat :
 	(x : Nat) ->
 	(y : Nat) ->
@@ -34,6 +40,7 @@ Int.Add.add_nat_nat :
 		(Int.Add (Int.nat x) (Int.nat y))
 		(Int.nat (Nat.Add x y));
 	
+@axiom
 Int.Add.add_neg_succ_neg_succ :
 	(x : Nat) ->
 	(y : Nat) ->
@@ -41,6 +48,7 @@ Int.Add.add_neg_succ_neg_succ :
 		(Int.Add (Int.neg_succ x) (Int.neg_succ y))
 		(Int.neg_succ (Nat.succ (Nat.Add x y)));
 
+@axiom
 Int.Add.add_zero_neg_succ:
 	(x : Nat) ->
 	Eq Int

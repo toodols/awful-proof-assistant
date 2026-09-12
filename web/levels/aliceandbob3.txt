@@ -1,11 +1,18 @@
+@axiom
 Hero : Type;
+@axiom
 DragonFelled : Type;
+@axiom
 WorldPeace : Type;
 
+@axiom
 slay_dragon : Hero -> DragonFelled;
+@axiom
 celebrate : DragonFelled -> WorldPeace;
 
+@axiom
 alice : Hero;
+@axiom
 bob : Hero;
 
 your_hero : Hero := <INPUT>;

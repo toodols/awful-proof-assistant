@@ -1,17 +1,29 @@
+@axiom
 True : Prop;
+@axiom
 True.triv : True;
+@axiom
 False : Prop;
+@axiom
 False.elim : (T : Prop) -> False -> T;
 
+@axiom
 Lift : Prop -> Type;
+@axiom
 Lift.intro : (p : Prop) -> p -> Lift p;
+@axiom
 Lift.elim : (p : Prop) -> Lift p -> p;
 
+@axiom
 Prop.Iff : (a : Prop) -> (b : Prop) -> Prop;
+@axiom
 Prop.Iff.intro : (a : Prop) -> (b : Prop) -> (a -> b) -> (b -> a) -> Prop.Iff a b;
 
+@axiom
 Not : Prop -> Prop;
+@axiom
 Not.intro : (a : Prop) -> (a -> False) -> Not a;
+@axiom
 Not.rec :
 	(a : Prop) ->
 	(motive : Not a -> Type) ->
@@ -50,18 +62,30 @@ Not.elim : (a : Prop) -> Not a -> a -> False :=
 		((proof : a -> False) => proof)
 		p;
 
+@axiom
 Prop.And : Prop -> Prop -> Prop;
+@axiom
 Prop.And.intro : (a : Prop) -> (b : Prop) -> a -> b -> Prop.And a b;
+@axiom
 Prop.And.left : (a : Prop) -> (b : Prop) -> Prop.And a b -> a;
+@axiom
 Prop.And.right : (a : Prop) -> (b : Prop) -> Prop.And a b -> b;
 
+@axiom
 Prop.Or : Prop -> Prop -> Prop;
+@axiom
 Prop.Or.inl : (a : Prop) -> (b : Prop) -> a -> Prop.Or a b;
+@axiom
 Prop.Or.inr : (a : Prop) -> (b : Prop) -> b -> Prop.Or a b;
+@axiom
 Prop.Or.elim : (a : Prop) -> (b : Prop) -> (c : Prop) -> Prop.Or a b -> (a -> c) -> (b -> c) -> c;
 
+@axiom
 Exists : (A : Type) -> (P : A -> Prop) -> Prop;
+@axiom
 Exists.intro : (A : Type) -> (P : A -> Prop) -> (a : A) -> P a -> Exists A P;
 
+@axiom
 ForAll : (A : Type) -> (P : A -> Prop) -> Prop;
+@axiom
 ForAll.intro : (A : Type) -> (P : A -> Prop) -> ((a : A) -> P a) -> ForAll A P;

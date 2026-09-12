@@ -1,20 +1,29 @@
 @require "peano.txt"
 
+@axiom
 List : Type -> Type;
+@axiom
 List.nil : (El : Type) -> List El;
+@axiom
 List.cons : (El : Type) -> (head : El) -> (tail : List El) -> List El;
 
+@axiom
 List.Len : (El : Type) -> (list : List El) -> Nat;
 // Proof that len([]) = 0
+@axiom
 List.Len.nil : (El : Type) -> Eq Nat (List.Len El (List.nil El)) Nat.zero;
 // Proof that len([head, ...tail]) = succ(len(tail))
+@axiom
 List.Len.cons : (El : Type) -> (head: El) -> (tail : List El) ->
 	Eq Nat (List.Len El (List.cons El head tail)) (Nat.succ (List.Len El tail));
 
+@axiom
 List.Join : (El : Type) -> (a : List El) -> (b : List El) -> List El;
 // Join([], a) = a
+@axiom
 List.Join.nil : (El : Type) -> (a : List El) ->
 	Eq (List El) (List.Join El (List.nil El) a) a;
 // Join([head, ...tail], a) = [head, ...Join(tail, a)]
+@axiom
 List.Join.cons : (El : Type) -> (head : El) -> (tail: List El) -> (a : List El) ->
 	Eq (List El) (List.Join El (List.cons El head tail) a) (List.cons El head (List.Join El tail a));

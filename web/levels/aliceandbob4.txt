@@ -1,15 +1,24 @@
+@axiom
 Character : Type;
 
+@axiom
 Dead : Character -> Type;
+@axiom
 IsHero : Character -> Type;
 
+@axiom
 slay : (hero : Character) -> (villain : Character) -> IsHero hero -> Dead villain;
 
+@axiom
 Alice : Character;
+@axiom
 Bob : Character;
+@axiom
 Dragon : Character;
 
+@axiom
 alice_is_hero : IsHero Alice;
+@axiom
 bob_is_hero : IsHero Bob;
 
 dragon_must_die : Dead Dragon := <INPUT>;

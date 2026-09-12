@@ -1,17 +1,27 @@
-Red : Type; Orange : Type; Yellow : Type; Green : Type; Alcohol : Type;
+@axiom
+Red : Type; @axiom Orange : Type; @axiom Yellow : Type; @axiom Green : Type; @axiom Alcohol : Type;
 // no tricks this time...
+@axiom
 tomato : Red;
+@axiom
 apple : Red;
+@axiom
 orange : Orange;
+@axiom
 mango : Orange;
+@axiom
 banana : Yellow;
+@axiom
 grape : Green;
 
+@axiom
 wine : Alcohol;
 ferment : Green -> Alcohol :=
 	( g : Green ) => wine;
 
+@axiom
 Meal : Type;
+@axiom
 fruity_meal : Red -> Orange -> Yellow -> Green -> Alcohol -> Meal;
 
 // fruity_meal with what? we still need something red, orange, and yellow
