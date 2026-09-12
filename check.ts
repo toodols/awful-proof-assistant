@@ -426,6 +426,14 @@ function app_subst_new_refs(tail: Expr, value: Expr, depth = 1): Expr {
 			ident: tail.ident,
 			tokens: [] as Token[],
 		};
+	} else if (tail.type === "value_with_type") {
+		// an opaque value keeps its identity; only its type can mention refs
+		return {
+			type: "value_with_type",
+			id: tail.id,
+			ty: app_subst_new_refs(tail.ty, value, depth),
+			tokens: [] as Token[],
+		};
 	} else {
 		throw new Error(`replace: ${tail.type}`);
 	}
@@ -859,6 +867,21 @@ function count_params(globals: Globals, ind: string, ind_binders: Binder[]): num
 	return 0;
 }
 
+// The types of a constructor's own arguments, past the parameters. Binders are
+// opened into opaque values rather than the bare constants derive_recursor uses,
+// so that a field mentioning an earlier binder can still be typed.
+function ctor_field_doms(ctor_ty: Expr, num_params: number): Expr[] {
+	const doms: Expr[] = [];
+	let cur = ctor_ty;
+	let seen = 0;
+	while (cur.type === "pi") {
+		if (seen >= num_params) doms.push(cur.head);
+		cur = app_subst_new_refs(cur.tail, opaque(cur.head));
+		seen += 1;
+	}
+	return doms;
+}
+
 // A Prop may only eliminate into a bigger sort when it is a subsingleton: at
 // most one constructor, all of whose non parameter fields are themselves
 // proofs. Without this, `Prop.Or.rec` into Type would let a proof decide which
@@ -879,11 +902,10 @@ function check_elimination_allowed(
 		);
 	}
 	for (const c of ctors) {
-		const { binders } = open_telescope(globals[c]!.ty);
-		for (const field of binders.slice(num_params)) {
+		for (const field of ctor_field_doms(globals[c]!.ty, num_params)) {
 			let field_sort: Expr;
 			try {
-				field_sort = type_of(globals, field.dom, {});
+				field_sort = type_of(globals, field, {});
 			} catch {
 				throw new Error(
 					`@rec(${ind}): cannot tell whether '${c}' carries data, so it may only eliminate into Prop`,

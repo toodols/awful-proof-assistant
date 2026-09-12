@@ -874,17 +874,19 @@ function plan_inductive(env: Env, group: Group): IndPlan | string {
 	if (instances.some((i) => i.level === null)) {
 		return "a declared recursor has no motive sort";
 	}
-	// A reader derives a universe polymorphic recursor whenever the type admits
-	// large elimination. Our having declared one at Type is proof that it does;
-	// from a Prop-only declaration there is no way to tell, so leave it alone.
+	// A reader derives a universe polymorphic recursor exactly when the type
+	// admits large elimination. Declaring one at Type is proof that it does -
+	// @rec would have refused otherwise - and having only a Prop one is proof
+	// that it does not, so the reader will land on a fixed Prop recursor too.
 	const big = instances.find((i) => i.level!.k === "num" && i.level!.n > 0);
-	if (big === undefined) {
-		return "every declared recursor is at Prop, so whether it is universe polymorphic cannot be told from here";
-	}
+	const base = big ?? instances[0]!;
+	const polymorphic = big !== undefined;
 
 	const rec_name = `${group.decl.name}.rec`;
-	const poly: Level = { k: "param", name: REC_LEVEL };
-	const { binders: head_binders, body: rest } = open_pis(big.ty, num_params + 1);
+	const poly: Level = polymorphic
+		? { k: "param", name: REC_LEVEL }
+		: base.level!;
+	const { binders: head_binders, body: rest } = open_pis(base.ty, num_params + 1);
 	const motive_dom = head_binders[num_params]!;
 	const rec_ty = close(
 		[
@@ -898,7 +900,11 @@ function plan_inductive(env: Env, group: Group): IndPlan | string {
 	// The reduction rules, read off the polymorphic recursor and the
 	// constructors: each rule abstracts the parameters, the motive, the cases
 	// and the constructor's own fields.
-	const rec_const: Core = { k: "const", name: rec_name, levels: [poly] };
+	const rec_const: Core = {
+		k: "const",
+		name: rec_name,
+		levels: polymorphic ? [poly] : [],
+	};
 	const { binders: prefix } = open_pis(
 		rec_ty,
 		num_params + 1 + group.ctors.length,
@@ -963,12 +969,18 @@ function plan_inductive(env: Env, group: Group): IndPlan | string {
 				ty: ctor_tys[i]!,
 				num_fields: shapes[i]!.fields,
 			})),
-			rec: { name: rec_name, ty: rec_ty, uparams: [REC_LEVEL], rules, k },
+			rec: {
+				name: rec_name,
+				ty: rec_ty,
+				uparams: polymorphic ? [REC_LEVEL] : [],
+				rules,
+				k,
+			},
 		},
 		instances: instances.map((i) => ({
 			from: i.decl.name,
 			name: rec_name,
-			levels: [i.level!],
+			levels: polymorphic ? [i.level!] : [],
 		})),
 	};
 }
@@ -1064,7 +1076,9 @@ export function export_to_lean(
 					});
 				}
 				w.inductive(plan.spec);
-				inductives += 1 + group.ctors.length + group.instances.length;
+				// what the block declares: the type, its constructors and the
+				// one recursor every declared instance collapses into
+				inductives += 1 + group.ctors.length + 1;
 				for (const c of group.ctors) folded.add(c.name);
 				for (const i of group.instances) folded.add(i.name);
 				continue;

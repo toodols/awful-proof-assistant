@@ -23,9 +23,17 @@ False.rec :
 Lift : Prop -> Type;
 @intro(Lift)
 Lift.intro : (p : Prop) -> p -> Lift p;
+@rec(Lift)
+Lift.rec :
+	(p : Prop) ->
+	(motive : Lift p -> Type) ->
+	(case_intro : (x : p) -> motive (Lift.intro p x)) ->
+	(target : Lift p) ->
+	motive target;
+
 // Lift p is a Type, so eliminating it into Prop is small elimination and needs
-// no permission. The Prop motive is stated directly rather than derived from a
-// Type one: the usual detour through Lift cannot be used for Lift itself.
+// no permission. Unlike every other rec_prop here, this one is stated rather
+// than derived: deriving one goes through Lift, which cannot work for Lift.
 @rec(Lift)
 Lift.rec_prop :
 	(p : Prop) ->
@@ -56,13 +64,35 @@ Prop.Iff : (a : Prop) -> (b : Prop) -> Prop;
 @intro(Prop.Iff)
 Prop.Iff.intro : (a : Prop) -> (b : Prop) -> (a -> b) -> (b -> a) -> Prop.Iff a b;
 @rec(Prop.Iff)
+Prop.Iff.rec :
+	(a : Prop) -> (b : Prop) ->
+	(motive : Prop.Iff a b -> Type) ->
+	(case_intro : (mp : a -> b) -> (mpr : b -> a) ->
+		motive (Prop.Iff.intro a b mp mpr)) ->
+	(target : Prop.Iff a b) ->
+	motive target;
+
 Prop.Iff.rec_prop :
 	(a : Prop) -> (b : Prop) ->
 	(motive : Prop.Iff a b -> Prop) ->
 	(case_intro : (mp : a -> b) -> (mpr : b -> a) ->
 		motive (Prop.Iff.intro a b mp mpr)) ->
 	(target : Prop.Iff a b) ->
-	motive target;
+	motive target :=
+	(a : Prop) => (b : Prop) =>
+	(motive : Prop.Iff a b -> Prop) =>
+	(case_intro : (mp : a -> b) -> (mpr : b -> a) ->
+		motive (Prop.Iff.intro a b mp mpr)) =>
+	(target : Prop.Iff a b) =>
+	Lift.elim
+		(motive target)
+		(Prop.Iff.rec a b
+			((t : Prop.Iff a b) => Lift (motive t))
+			((mp : a -> b) => (mpr : b -> a) =>
+				Lift.intro
+					(motive (Prop.Iff.intro a b mp mpr))
+					(case_intro mp mpr))
+			target);
 
 Prop.Iff.mp : (a : Prop) -> (b : Prop) -> Prop.Iff a b -> a -> b :=
 	(a : Prop) => (b : Prop) => (h : Prop.Iff a b) =>
@@ -126,12 +156,32 @@ Prop.And : Prop -> Prop -> Prop;
 @intro(Prop.And)
 Prop.And.intro : (a : Prop) -> (b : Prop) -> a -> b -> Prop.And a b;
 @rec(Prop.And)
+Prop.And.rec :
+	(a : Prop) -> (b : Prop) ->
+	(motive : Prop.And a b -> Type) ->
+	(case_intro : (x : a) -> (y : b) -> motive (Prop.And.intro a b x y)) ->
+	(target : Prop.And a b) ->
+	motive target;
+
 Prop.And.rec_prop :
 	(a : Prop) -> (b : Prop) ->
 	(motive : Prop.And a b -> Prop) ->
 	(case_intro : (x : a) -> (y : b) -> motive (Prop.And.intro a b x y)) ->
 	(target : Prop.And a b) ->
-	motive target;
+	motive target :=
+	(a : Prop) => (b : Prop) =>
+	(motive : Prop.And a b -> Prop) =>
+	(case_intro : (x : a) -> (y : b) -> motive (Prop.And.intro a b x y)) =>
+	(target : Prop.And a b) =>
+	Lift.elim
+		(motive target)
+		(Prop.And.rec a b
+			((t : Prop.And a b) => Lift (motive t))
+			((x : a) => (y : b) =>
+				Lift.intro
+					(motive (Prop.And.intro a b x y))
+					(case_intro x y))
+			target);
 
 Prop.And.left : (a : Prop) -> (b : Prop) -> Prop.And a b -> a :=
 	(a : Prop) => (b : Prop) => (h : Prop.And a b) =>
@@ -199,12 +249,30 @@ ForAll : (A : Type) -> (P : A -> Prop) -> Prop;
 @intro(ForAll)
 ForAll.intro : (A : Type) -> (P : A -> Prop) -> ((a : A) -> P a) -> ForAll A P;
 @rec(ForAll)
+ForAll.rec :
+	(A : Type) -> (P : A -> Prop) ->
+	(motive : ForAll A P -> Type) ->
+	(case_intro : (f : (a : A) -> P a) -> motive (ForAll.intro A P f)) ->
+	(target : ForAll A P) ->
+	motive target;
+
 ForAll.rec_prop :
 	(A : Type) -> (P : A -> Prop) ->
 	(motive : ForAll A P -> Prop) ->
 	(case_intro : (f : (a : A) -> P a) -> motive (ForAll.intro A P f)) ->
 	(target : ForAll A P) ->
-	motive target;
+	motive target :=
+	(A : Type) => (P : A -> Prop) =>
+	(motive : ForAll A P -> Prop) =>
+	(case_intro : (f : (a : A) -> P a) -> motive (ForAll.intro A P f)) =>
+	(target : ForAll A P) =>
+	Lift.elim
+		(motive target)
+		(ForAll.rec A P
+			((t : ForAll A P) => Lift (motive t))
+			((f : (a : A) -> P a) =>
+				Lift.intro (motive (ForAll.intro A P f)) (case_intro f))
+			target);
 
 ForAll.elim : (A : Type) -> (P : A -> Prop) -> ForAll A P -> (a : A) -> P a :=
 	(A : Type) => (P : A -> Prop) => (h : ForAll A P) => (a : A) =>
