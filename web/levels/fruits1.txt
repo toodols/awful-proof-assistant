@@ -1,15 +1,9 @@
-@axiom
-Red : Type; @axiom Orange : Type; @axiom Yellow : Type; @axiom Green : Type;
+Red : Type; Orange : Type; Yellow : Type; Green : Type;
 
-@axiom
 apple : Red;
-@axiom
 tomato : Yellow; // I think someone is colorblind...
-@axiom
 banana : Green;
-@axiom
 orange : Red;
-@axiom
 grape : Orange;
 
 something_red : Red := <INPUT>;

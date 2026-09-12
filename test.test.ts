@@ -167,6 +167,23 @@ test("an assumption has to say so", async () => {
 	expect(await check(`@nonsense\nNat : Type;`)).toThrow();
 });
 
+// The web levels are toys, and their premises are assumptions by construction,
+// so the UI checks them without requiring the marker.
+test("markers can be waived", async () => {
+	const statements = await expand("main.txt", async () => `Nat : Type;`);
+	expect(() =>
+		check_program(new_globals(), statements, { require_markers: false }),
+	).not.toThrow();
+	// a marker that contradicts its declaration is still wrong either way
+	const contradictory = await expand(
+		"main.txt",
+		async () => `@axiom\nt : Type := Prop;`,
+	);
+	expect(() =>
+		check_program(new_globals(), contradictory, { require_markers: false }),
+	).toThrow();
+});
+
 // The point of the marker: the trust base is greppable, and it matches what the
 // exporter reports. A proof using SORRY would add an axiom with no declaration
 // of its own to mark, which is the one hole in this.

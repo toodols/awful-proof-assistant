@@ -1,49 +1,29 @@
-@axiom
 Character : Type;
 
-@axiom
 Father : (p : Character) -> (c : Character ) -> Prop;
-@axiom
 Mother : (p : Character) -> (c : Character ) -> Prop;
 
-@axiom
 Parent : (p : Character) -> (c : Character ) -> Prop;
-@axiom
 Parent.from_mother : (p : Character) -> ( c : Character ) -> Mother p c -> Parent p c;
-@axiom
 Parent.from_father : (p : Character) -> ( c : Character ) -> Father p c -> Parent p c;
 
-@axiom
 Grandparent : (g : Character) -> (c : Character) -> Prop;
-@axiom
 Grandparent.intro : (g : Character) -> (p : Character) -> (c : Character) -> Parent g p -> Parent p c -> Grandparent g c;
 
-@axiom
 Sibling : (s1 : Character) -> (s2 : Character) -> Prop;
-@axiom
 Sibling.intro : (s1 : Character) -> (s2 : Character) -> (p : Character) 
              -> Parent p s1 -> Parent p s2 -> Sibling s1 s2;
 
-@axiom
 Rick : Character;
-@axiom
 Jerry : Character;
-@axiom
 Beth : Character;
-@axiom
 Morty : Character;
-@axiom
 Summer : Character;
 
-@axiom
 beth_mother_morty : Mother Beth Morty;
-@axiom
 beth_mother_summer : Mother Beth Summer;
-@axiom
 jerry_father_morty : Father Jerry Morty;
-@axiom
 jerry_father_summer : Father Jerry Summer;
-@axiom
 rick_father_beth : Father Rick Beth;
 
 morty_sibling_summer : Sibling Morty Summer := <INPUT>;

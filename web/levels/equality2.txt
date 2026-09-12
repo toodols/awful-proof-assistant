@@ -1,23 +1,14 @@
-@axiom
 Equals : Type -> Type -> Prop;
 
-@axiom
 reflexive : (x : Type) -> Equals x x;
-@axiom
 symmetric : (x : Type) -> (y : Type) -> Equals x y -> Equals y x;
-@axiom
 transitive : (x : Type) -> (y : Type) -> (z : Type) -> Equals x y -> Equals y z -> Equals x z;
 
-@axiom
 coke : Type;
-@axiom
 pepsi : Type;
-@axiom
 dr_pepper: Type;
 
-@axiom
 coke_eq_pepsi : Eq coke pepsi;
-@axiom
 pepsi_eq_dr_pepper : Eq pepsi dr_pepper;
 // Use the symmetric property on coke_eq_pepsi
 pepsi_eq_coke : Equals pepsi coke := <INPUT>;

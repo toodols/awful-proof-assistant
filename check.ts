@@ -664,7 +664,14 @@ function check_is_type(
 const IMPLEMENTED_DIRECTIVES = ["axiom"];
 const PLANNED_DIRECTIVES = ["inductive", "intro", "rec"];
 
-function check_directives(stmt: Statement) {
+export type CheckOptions = {
+	// Whether a declaration with no `:=` has to be marked `@axiom`. On for a
+	// library, where the trust base is the point; off for the web levels, which
+	// are toys whose premises are assumptions by construction.
+	require_markers?: boolean;
+};
+
+function check_directives(stmt: Statement, opts: CheckOptions) {
 	const name = first_ident(stmt.pat).ident;
 	for (const directive of stmt.directives) {
 		if (PLANNED_DIRECTIVES.includes(directive.name)) {
@@ -677,7 +684,7 @@ function check_directives(stmt: Statement) {
 		}
 	}
 	if (stmt.def === null && stmt.pat.type === "ident") {
-		if (stmt.directives.length === 0) {
+		if (stmt.directives.length === 0 && opts.require_markers !== false) {
 			throw new Error(
 				`'${name}' has no definition, so it is an assumption: mark it @axiom`,
 			);
@@ -689,8 +696,12 @@ function check_directives(stmt: Statement) {
 	}
 }
 
-export function check_stmt(globals: Globals, stmt: Statement) {
-	check_directives(stmt);
+export function check_stmt(
+	globals: Globals,
+	stmt: Statement,
+	opts: CheckOptions = {},
+) {
+	check_directives(stmt, opts);
 	let refs: Expr[] = [];
 	let inner_defs: Record<string, Expr> = {};
 	let def_names: string[] = [];
@@ -744,8 +755,12 @@ export function check_stmt(globals: Globals, stmt: Statement) {
 	}
 }
 
-export function check_program(defs: Globals, stmts: Statement[]) {
+export function check_program(
+	defs: Globals,
+	stmts: Statement[],
+	opts: CheckOptions = {},
+) {
 	for (const stmt of stmts) {
-		check_stmt(defs, stmt);
+		check_stmt(defs, stmt, opts);
 	}
 }

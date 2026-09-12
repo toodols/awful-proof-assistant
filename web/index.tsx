@@ -176,7 +176,11 @@ const Main = () => {
 								},
 							);
 
-							check_program(globals, statements);
+							// the levels are toys: their premises are assumptions
+							// by construction, so do not make them say so
+							check_program(globals, statements, {
+								require_markers: false,
+							});
 
 							set_output("Well done!");
 							set_successful(true);
