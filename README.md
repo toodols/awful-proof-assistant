@@ -9,6 +9,7 @@ Implements dependent type theory (and subtypes/supertypes don't exist)
 - Probably super unoptimized as well
 
 # todo
+Embrace the exponentials :sob:
 define multiplication, power, integers, and rationals
 
 To run: `bun run .`
