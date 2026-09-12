@@ -68,9 +68,9 @@ Cardinal.refl : (A : Type) -> Eq Cardinal (Cardinal.of A) (Cardinal.of A) :=
 // The cardinality of a *set* is the cardinality of the type of its members, so
 // it needs the subtype carved out by a predicate. No such type former exists
 // here, so state one: `Sub A s` is the members of A that satisfy s.
-@axiom
+@inductive
 Sub : (A : Type) -> (s : Set A) -> Type;
-@axiom
+@intro(Sub)
 Sub.intro : (A : Type) -> (s : Set A) -> (a : A) -> s a -> Sub A s;
 @axiom
 Sub.val : (A : Type) -> (s : Set A) -> Sub A s -> A;

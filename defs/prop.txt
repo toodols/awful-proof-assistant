@@ -1,27 +1,27 @@
-@axiom
+@inductive
 True : Prop;
-@axiom
+@intro(True)
 True.triv : True;
-@axiom
+@inductive
 False : Prop;
 @axiom
 False.elim : (T : Prop) -> False -> T;
 
-@axiom
+@inductive
 Lift : Prop -> Type;
-@axiom
+@intro(Lift)
 Lift.intro : (p : Prop) -> p -> Lift p;
 @axiom
 Lift.elim : (p : Prop) -> Lift p -> p;
 
-@axiom
+@inductive
 Prop.Iff : (a : Prop) -> (b : Prop) -> Prop;
-@axiom
+@intro(Prop.Iff)
 Prop.Iff.intro : (a : Prop) -> (b : Prop) -> (a -> b) -> (b -> a) -> Prop.Iff a b;
 
-@axiom
+@inductive
 Not : Prop -> Prop;
-@axiom
+@intro(Not)
 Not.intro : (a : Prop) -> (a -> False) -> Not a;
 @axiom
 Not.rec :
@@ -62,30 +62,30 @@ Not.elim : (a : Prop) -> Not a -> a -> False :=
 		((proof : a -> False) => proof)
 		p;
 
-@axiom
+@inductive
 Prop.And : Prop -> Prop -> Prop;
-@axiom
+@intro(Prop.And)
 Prop.And.intro : (a : Prop) -> (b : Prop) -> a -> b -> Prop.And a b;
 @axiom
 Prop.And.left : (a : Prop) -> (b : Prop) -> Prop.And a b -> a;
 @axiom
 Prop.And.right : (a : Prop) -> (b : Prop) -> Prop.And a b -> b;
 
-@axiom
+@inductive
 Prop.Or : Prop -> Prop -> Prop;
-@axiom
+@intro(Prop.Or)
 Prop.Or.inl : (a : Prop) -> (b : Prop) -> a -> Prop.Or a b;
-@axiom
+@intro(Prop.Or)
 Prop.Or.inr : (a : Prop) -> (b : Prop) -> b -> Prop.Or a b;
 @axiom
 Prop.Or.elim : (a : Prop) -> (b : Prop) -> (c : Prop) -> Prop.Or a b -> (a -> c) -> (b -> c) -> c;
 
-@axiom
+@inductive
 Exists : (A : Type) -> (P : A -> Prop) -> Prop;
-@axiom
+@intro(Exists)
 Exists.intro : (A : Type) -> (P : A -> Prop) -> (a : A) -> P a -> Exists A P;
 
-@axiom
+@inductive
 ForAll : (A : Type) -> (P : A -> Prop) -> Prop;
-@axiom
+@intro(ForAll)
 ForAll.intro : (A : Type) -> (P : A -> Prop) -> ((a : A) -> P a) -> ForAll A P;

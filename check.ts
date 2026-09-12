@@ -6,6 +6,8 @@ type Globals = {
 		ty: Expr;
 		def: Expr | null;
 		rules: { pat: Expr; ty: Expr; def: Expr }[];
+		// set by @inductive; constructors are filled in by @intro(...)
+		inductive?: { constructors: string[] };
 	};
 };
 const error_ty = { type: "error" as const, tokens: [] as Token[] };
@@ -661,8 +663,106 @@ function check_is_type(
 // What a declaration with no `:=` is allowed to claim to be. Only `@axiom`
 // means "take my word for it"; the other three are claims the checker is meant
 // to verify, and until it can, saying so would be a lie.
-const IMPLEMENTED_DIRECTIVES = ["axiom"];
-const PLANNED_DIRECTIVES = ["inductive", "intro", "rec"];
+const IMPLEMENTED_DIRECTIVES = ["axiom", "inductive", "intro"];
+const PLANNED_DIRECTIVES = ["rec"];
+
+function occurs(name: string, expr: Expr): boolean {
+	if (expr.type === "global") return expr.ident === name;
+	if (expr.type === "application") {
+		return occurs(name, expr.fun) || occurs(name, expr.value);
+	}
+	if (expr.type === "pi" || expr.type === "lambda") {
+		return occurs(name, expr.head) || occurs(name, expr.tail);
+	}
+	if (expr.type === "value_with_type") return occurs(name, expr.ty);
+	return false;
+}
+
+function head_of(expr: Expr): Expr {
+	let cur = expr;
+	while (cur.type === "application") cur = cur.fun;
+	return cur;
+}
+
+// A constructor argument may mention the type being defined only strictly
+// positively: either it is an `X ...` itself, or a function *into* `X ...`
+// whose own arguments never mention X. X to the left of an arrow would let the
+// type contain its own function space, and
+//
+//   Bad : Type;  Bad.intro : (Bad -> Bad) -> Bad;
+//
+// is enough to prove False. This is the check that makes @intro worth writing.
+function check_strictly_positive(ind: string, arg: Expr) {
+	if (!occurs(ind, arg)) return;
+	if (arg.type === "pi") {
+		if (occurs(ind, arg.head)) {
+			throw new Error(
+				`${ind} appears to the left of an arrow, which is not strictly positive`,
+			);
+		}
+		check_strictly_positive(ind, arg.tail);
+		return;
+	}
+	const head = head_of(arg);
+	if (head.type === "global" && head.ident === ind) {
+		// no nested inductives here, so it may not occur in its own arguments
+		let cur: Expr = arg;
+		while (cur.type === "application") {
+			if (occurs(ind, cur.value)) {
+				throw new Error(`${ind} appears inside its own arguments`);
+			}
+			cur = cur.fun;
+		}
+		return;
+	}
+	throw new Error(`${ind} appears in a position that is not strictly positive`);
+}
+
+// @inductive: the declared type has to end in a sort, so that it is a type
+// former at all. @intro(X): every argument strictly positive in X, and the
+// whole thing has to land in an X.
+function check_inductive_markers(
+	globals: Globals,
+	stmt: Statement,
+	ty: Expr,
+	name: string,
+) {
+	for (const directive of stmt.directives) {
+		if (directive.name === "inductive") {
+			if (directive.arg !== null) {
+				throw new Error("@inductive takes no argument");
+			}
+			let cur = ty;
+			while (cur.type === "pi") cur = cur.tail;
+			if (sort_index(cur) < 0) {
+				throw new Error(
+					`@inductive '${name}' has to end in a sort to be a type`,
+				);
+			}
+		} else if (directive.name === "intro") {
+			const ind = directive.arg;
+			if (ind === null) {
+				throw new Error(
+					"@intro needs the type it builds, as @intro(Nat)",
+				);
+			}
+			if (!globals[ind]?.inductive) {
+				throw new Error(`@intro(${ind}): ${ind} is not an @inductive type`);
+			}
+			let cur = ty;
+			while (cur.type === "pi") {
+				check_strictly_positive(ind, cur.head);
+				cur = cur.tail;
+			}
+			const head = head_of(cur);
+			if (!(head.type === "global" && head.ident === ind)) {
+				throw new Error(
+					`@intro(${ind}): '${name}' does not build a ${ind}`,
+				);
+			}
+		}
+	}
+}
 
 export type CheckOptions = {
 	// Whether a declaration with no `:=` has to be marked `@axiom`. On for a
@@ -719,6 +819,7 @@ export function check_stmt(
 	}
 
 	check_is_type(globals, ty, inner_defs);
+	check_inductive_markers(globals, stmt, ty, first_ident(stmt.pat).ident);
 
 	// reduced like the type above: unfolding a global leaves a redex behind, and
 	// a binder type inside the value has to end up in the same shape as the
@@ -743,6 +844,13 @@ export function check_stmt(
 			throw new Error(`${first} already defined`);
 		}
 		globals[first] = { ty, def, rules: [] };
+		for (const directive of stmt.directives) {
+			if (directive.name === "inductive") {
+				globals[first]!.inductive = { constructors: [] };
+			} else if (directive.name === "intro") {
+				globals[directive.arg!]!.inductive!.constructors.push(first);
+			}
+		}
 	} else if (stmt.pat.type === "application") {
 		const first = first_ident(stmt.pat).ident;
 		if (!def) {

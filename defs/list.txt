@@ -1,10 +1,10 @@
 @require "peano.txt"
 
-@axiom
+@inductive
 List : Type -> Type;
-@axiom
+@intro(List)
 List.nil : (El : Type) -> List El;
-@axiom
+@intro(List)
 List.cons : (El : Type) -> (head : El) -> (tail : List El) -> List El;
 
 @axiom

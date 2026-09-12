@@ -1,8 +1,8 @@
 @require "prop.txt"
 
-@axiom
+@inductive
 Eq : (A : Type) -> (a : A) -> (b : A) -> Prop;
-@axiom
+@intro(Eq)
 Eq.refl : (A : Type) -> (x : A) -> Eq A x x;
 @axiom
 Eq.rec :

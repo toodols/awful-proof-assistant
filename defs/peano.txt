@@ -1,10 +1,10 @@
 @require "equality.txt"
 
-@axiom
+@inductive
 Nat : Type;
-@axiom
+@intro(Nat)
 Nat.zero : Nat;
-@axiom
+@intro(Nat)
 Nat.succ : Nat -> Nat;
 @axiom
 Nat.rec :

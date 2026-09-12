@@ -184,19 +184,25 @@ test("markers can be waived", async () => {
 	).toThrow();
 });
 
-// The point of the marker: the trust base is greppable, and it matches what the
-// exporter reports. A proof using SORRY would add an axiom with no declaration
-// of its own to mark, which is the one hole in this.
+// The point of the markers: the trust base is greppable, and it matches what
+// the exporter reports. @inductive and @intro still export as axioms, since
+// nothing generates recursors yet, so every marker is one exported axiom. A
+// proof using SORRY would add an axiom with no declaration of its own to mark,
+// which is the one hole in this.
 test("every axiom in the export is marked in the source", async () => {
 	const statements = await expand(
 		"./defs/main.txt",
 		async (path) => await Bun.file(path).text(),
 	);
 	const result = export_to_lean(statements);
-	const marked = statements.filter((s) =>
+	const marked = statements.filter((s) => s.directives.length > 0);
+	expect(marked.length).toBe(result.axioms);
+
+	// of those, the ones still taken purely on trust
+	const assumed = marked.filter((s) =>
 		s.directives.some((d) => d.name === "axiom"),
-	).length;
-	expect(marked).toBe(result.axioms);
+	);
+	expect(assumed.length).toBeLessThan(marked.length);
 });
 
 test("parse_directive", () => {

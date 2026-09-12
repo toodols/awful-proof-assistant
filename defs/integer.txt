@@ -1,8 +1,8 @@
-@axiom
+@inductive
 Int : Type;
-@axiom
+@intro(Int)
 Int.nat : Nat -> Int;
-@axiom
+@intro(Int)
 Int.neg_succ : Nat -> Int;
 @axiom
 Int.rec :
