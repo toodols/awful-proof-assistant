@@ -2,6 +2,12 @@
 True : Prop;
 @intro(True)
 True.triv : True;
+@rec(True)
+True.rec :
+	(motive : True -> Type) ->
+	(case_triv : motive True.triv) ->
+	(target : True) ->
+	motive target;
 @inductive
 False : Prop;
 // no constructors, so no cases: from a False, anything. Eliminating a Prop
@@ -49,6 +55,28 @@ False.elim : (T : Prop) -> False -> T :=
 Prop.Iff : (a : Prop) -> (b : Prop) -> Prop;
 @intro(Prop.Iff)
 Prop.Iff.intro : (a : Prop) -> (b : Prop) -> (a -> b) -> (b -> a) -> Prop.Iff a b;
+@rec(Prop.Iff)
+Prop.Iff.rec_prop :
+	(a : Prop) -> (b : Prop) ->
+	(motive : Prop.Iff a b -> Prop) ->
+	(case_intro : (mp : a -> b) -> (mpr : b -> a) ->
+		motive (Prop.Iff.intro a b mp mpr)) ->
+	(target : Prop.Iff a b) ->
+	motive target;
+
+Prop.Iff.mp : (a : Prop) -> (b : Prop) -> Prop.Iff a b -> a -> b :=
+	(a : Prop) => (b : Prop) => (h : Prop.Iff a b) =>
+	Prop.Iff.rec_prop a b
+		((t : Prop.Iff a b) => a -> b)
+		((mp : a -> b) => (mpr : b -> a) => mp)
+		h;
+
+Prop.Iff.mpr : (a : Prop) -> (b : Prop) -> Prop.Iff a b -> b -> a :=
+	(a : Prop) => (b : Prop) => (h : Prop.Iff a b) =>
+	Prop.Iff.rec_prop a b
+		((t : Prop.Iff a b) => b -> a)
+		((mp : a -> b) => (mpr : b -> a) => mpr)
+		h;
 
 @inductive
 Not : Prop -> Prop;
@@ -149,8 +177,38 @@ Prop.Or.elim : (a : Prop) -> (b : Prop) -> (c : Prop) -> Prop.Or a b -> (a -> c)
 Exists : (A : Type) -> (P : A -> Prop) -> Prop;
 @intro(Exists)
 Exists.intro : (A : Type) -> (P : A -> Prop) -> (a : A) -> P a -> Exists A P;
+@rec(Exists)
+Exists.rec_prop :
+	(A : Type) -> (P : A -> Prop) ->
+	(motive : Exists A P -> Prop) ->
+	(case_intro : (a : A) -> (h : P a) -> motive (Exists.intro A P a h)) ->
+	(target : Exists A P) ->
+	motive target;
+
+Exists.elim : (A : Type) -> (P : A -> Prop) -> (C : Prop) ->
+	Exists A P -> ((a : A) -> P a -> C) -> C :=
+	(A : Type) => (P : A -> Prop) => (C : Prop) =>
+	(h : Exists A P) => (k : (a : A) -> P a -> C) =>
+	Exists.rec_prop A P
+		((t : Exists A P) => C)
+		((a : A) => (x : P a) => k a x)
+		h;
 
 @inductive
 ForAll : (A : Type) -> (P : A -> Prop) -> Prop;
 @intro(ForAll)
 ForAll.intro : (A : Type) -> (P : A -> Prop) -> ((a : A) -> P a) -> ForAll A P;
+@rec(ForAll)
+ForAll.rec_prop :
+	(A : Type) -> (P : A -> Prop) ->
+	(motive : ForAll A P -> Prop) ->
+	(case_intro : (f : (a : A) -> P a) -> motive (ForAll.intro A P f)) ->
+	(target : ForAll A P) ->
+	motive target;
+
+ForAll.elim : (A : Type) -> (P : A -> Prop) -> ForAll A P -> (a : A) -> P a :=
+	(A : Type) => (P : A -> Prop) => (h : ForAll A P) => (a : A) =>
+	ForAll.rec_prop A P
+		((t : ForAll A P) => P a)
+		((f : (x : A) -> P x) => f a)
+		h;

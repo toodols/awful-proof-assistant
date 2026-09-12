@@ -29,8 +29,37 @@ Int.rec_prop :
         ((n : Nat) => Lift.intro (motive (Int.neg_succ n)) (case_neg_succ n))
         target);
 
-@axiom
-Int.Add : Int -> Int -> Int;
+// x - y as an integer, by cases on whether y reaches x. This is the only
+// interesting part of addition: it is what the mixed sign cases need.
+Int.sub_nat_nat : Nat -> Nat -> Int :=
+	(x : Nat) => (y : Nat) =>
+	Nat.rec
+		((t : Nat) => Int)
+		(Int.nat (Nat.Sub x y))
+		((k : Nat) => (ih : Int) => Int.neg_succ k)
+		(Nat.Sub y x);
+
+// Addition by cases on both arguments. The three equations below are now
+// consequences of this rather than a partial specification of an opaque
+// function - they hold by reflexivity in the checker, and stay assumptions only
+// because the exporter cannot yet carry a proof that needs a recursor to fire.
+Int.Add : Int -> Int -> Int :=
+	(a : Int) => (b : Int) =>
+	Int.rec
+		((t : Int) => Int)
+		((x : Nat) =>
+			Int.rec
+				((t : Int) => Int)
+				((y : Nat) => Int.nat (Nat.Add x y))
+				((y : Nat) => Int.sub_nat_nat x (Nat.succ y))
+				b)
+		((x : Nat) =>
+			Int.rec
+				((t : Int) => Int)
+				((y : Nat) => Int.sub_nat_nat y (Nat.succ x))
+				((y : Nat) => Int.neg_succ (Nat.succ (Nat.Add x y)))
+				b)
+		a;
 
 @axiom
 Int.Add.add_nat_nat :

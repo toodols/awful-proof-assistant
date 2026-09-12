@@ -48,6 +48,16 @@ Nat.Add : Nat -> Nat -> Nat := (a : Nat) => (b : Nat) =>
 // nothing reduces, so `Nat.Add x Nat.zero` just sits there. Both become
 // `Eq.refl` the day Nat is a real inductive type with a recursor that fires.
 // ∀ x ∈ ℕ. x + 0 = x
+// pred 0 = 0, and a - b = 0 once b reaches a: truncated, as it has to be
+// without negative numbers.
+Nat.pred : Nat -> Nat :=
+	(n : Nat) =>
+	Nat.rec ((t : Nat) => Nat) Nat.zero ((m : Nat) => (ih : Nat) => m) n;
+
+Nat.Sub : Nat -> Nat -> Nat :=
+	(a : Nat) => (b : Nat) =>
+	Nat.rec ((t : Nat) => Nat) a ((m : Nat) => (ih : Nat) => Nat.pred ih) b;
+
 @axiom
 Nat.Add.add_zero : (x : Nat) -> Eq Nat (Nat.Add x Nat.zero) x;
 // ∀ x, y ∈ ℕ. x + S y = S (x + y)
