@@ -4,8 +4,14 @@ True : Prop;
 True.triv : True;
 @inductive
 False : Prop;
-@axiom
-False.elim : (T : Prop) -> False -> T;
+// no constructors, so no cases: from a False, anything. Eliminating a Prop
+// into Type is allowed here because False has no constructor that could carry
+// data to reveal.
+@rec(False)
+False.rec :
+	(motive : False -> Type) ->
+	(target : False) ->
+	motive target;
 
 @inductive
 Lift : Prop -> Type;
@@ -13,6 +19,19 @@ Lift : Prop -> Type;
 Lift.intro : (p : Prop) -> p -> Lift p;
 @axiom
 Lift.elim : (p : Prop) -> Lift p -> p;
+
+False.rec_prop :
+	(motive : False -> Prop) ->
+	(target : False) ->
+	motive target :=
+	(motive : False -> Prop) =>
+	(target : False) =>
+	Lift.elim
+		(motive target)
+		(False.rec ((x : False) => Lift (motive x)) target);
+
+False.elim : (T : Prop) -> False -> T :=
+	(T : Prop) => (f : False) => False.rec_prop ((x : False) => T) f;
 
 @inductive
 Prop.Iff : (a : Prop) -> (b : Prop) -> Prop;
