@@ -87,12 +87,33 @@ Sub.val : (A : Type) -> (s : Set A) -> Sub A s -> A :=
 		((a : A) => (h : s a) => a)
 		x;
 
-// This one has to wait for iota: the proof of `s a` is right there in the
-// constructor, but reaching it means `Sub.val A s (Sub.intro A s a h)`
-// reducing to `a`, and Sub.rec does not compute yet.
-@axiom
+Sub.rec_prop :
+	(A : Type) -> (s : Set A) ->
+	(motive : Sub A s -> Prop) ->
+	(case_intro : (a : A) -> (h : s a) -> motive (Sub.intro A s a h)) ->
+	(target : Sub A s) ->
+	motive target :=
+	(A : Type) => (s : Set A) =>
+	(motive : Sub A s -> Prop) =>
+	(case_intro : (a : A) -> (h : s a) -> motive (Sub.intro A s a h)) =>
+	(target : Sub A s) =>
+	Lift.elim
+		(motive target)
+		(Sub.rec A s
+			((x : Sub A s) => Lift (motive x))
+			((a : A) => (h : s a) =>
+				Lift.intro (motive (Sub.intro A s a h)) (case_intro a h))
+			target);
+
+// `Sub.val A s (Sub.intro A s a h)` reduces to `a`, so the proof the
+// constructor carries is exactly the proof required.
 Sub.property : (A : Type) -> (s : Set A) -> (x : Sub A s) ->
-	s (Sub.val A s x);
+	s (Sub.val A s x) :=
+	(A : Type) => (s : Set A) => (x : Sub A s) =>
+	Sub.rec_prop A s
+		((t : Sub A s) => s (Sub.val A s t))
+		((a : A) => (h : s a) => h)
+		x;
 
 Set.Card : (A : Type) -> Set A -> Cardinal :=
 	(A : Type) => (s : Set A) => Cardinal.of (Sub A s);

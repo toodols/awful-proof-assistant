@@ -433,10 +433,18 @@ test("exports all defs to the json export format", async () => {
 
 	const next: Record<string, number> = { in: 1, il: 1, ie: 0 };
 	let declarations = 0;
+	let blocks = 0;
 	for (const line of lines.slice(1)) {
 		const key = ["in", "il", "ie"].find((k) => k in line);
 		if (key === undefined) {
-			// anything without an index of its own is a declaration
+			// anything without an index of its own is a declaration, and an
+			// inductive is one line carrying several
+			if ("inductive" in line) {
+				const ind = line.inductive;
+				blocks +=
+					ind.types.length + ind.ctors.length + ind.recs.length;
+				continue;
+			}
 			expect("axiom" in line || "def" in line).toBe(true);
 			declarations++;
 			continue;
@@ -444,6 +452,51 @@ test("exports all defs to the json export format", async () => {
 		expect(line[key]).toBe(next[key]!++);
 	}
 	expect(declarations).toBe(result.axioms + result.definitions);
+	expect(blocks).toBe(result.inductives);
+	// Nat really is an inductive in the JSON, not an axiom
+	expect(blocks).toBeGreaterThan(0);
+});
+
+// An inductive carries its constructors and a universe polymorphic recursor, so
+// the kernel can reduce it - which is what lets arithmetic be proved by
+// reflexivity and survive the export.
+test("an inductive exports with a polymorphic recursor", async () => {
+	const statements = await expand(
+		"main.txt",
+		async () => `
+		@inductive
+		Nat : Type;
+		@intro(Nat)
+		Nat.zero : Nat;
+		@intro(Nat)
+		Nat.succ : Nat -> Nat;
+		@rec(Nat)
+		Nat.rec :
+			(motive : Nat -> Type) ->
+			(case_zero : motive Nat.zero) ->
+			(case_succ : (n : Nat) -> motive n -> motive (Nat.succ n)) ->
+			(target : Nat) ->
+			motive target;
+		`,
+	);
+	const result = export_to_lean(statements, { format: "json" });
+	// the type, both constructors and the recursor, all in one block
+	expect(result.inductives).toBe(4);
+	expect(result.axioms).toBe(0);
+
+	const lines = result.text.trim().split("\n").map((l) => JSON.parse(l));
+	const block = lines.find((l) => "inductive" in l)!.inductive;
+	expect(block.types[0].numParams).toBe(0);
+	expect(block.ctors.map((c: { numFields: number }) => c.numFields)).toEqual([0, 1]);
+	// one level parameter, and one reduction rule per constructor
+	expect(block.recs[0].levelParams.length).toBe(1);
+	expect(block.recs[0].rules.length).toBe(2);
+	expect(block.recs[0].k).toBe(false);
+
+	// the text format has no inductives and keeps emitting axioms
+	const text = export_to_lean(statements, { format: "text" });
+	expect(text.inductives).toBe(0);
+	expect(text.axioms).toBe(4);
 });
 
 test("a single full arity rule exports as a definition", async () => {

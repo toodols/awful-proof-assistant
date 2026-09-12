@@ -131,12 +131,50 @@ type Emitter = {
 		body: number,
 	): string;
 	axiom(name: number, ty: number, uparams: number[]): string;
+	// Only the JSON format has inductives; the text format keeps emitting
+	// axioms, which is all it ever carried here.
+	inductive?(spec: InductiveSpec): string;
 	definition(
 		name: number,
 		ty: number,
 		value: number,
 		uparams: number[],
 	): string;
+};
+
+// Indices, ready to print: names and expressions are already interned.
+export type InductiveSpec = {
+	types: {
+		name: number;
+		uparams: number[];
+		ty: number;
+		all: number[];
+		ctors: number[];
+		num_params: number;
+		num_indices: number;
+		is_rec: boolean;
+	}[];
+	ctors: {
+		name: number;
+		uparams: number[];
+		ty: number;
+		cidx: number;
+		num_params: number;
+		num_fields: number;
+		induct: number;
+	}[];
+	recs: {
+		name: number;
+		uparams: number[];
+		ty: number;
+		num_params: number;
+		num_indices: number;
+		num_motives: number;
+		num_minors: number;
+		rules: { ctor: number; nfields: number; rhs: number }[];
+		all: number[];
+		k: boolean;
+	}[];
 };
 
 const text_emitter: Emitter = {
@@ -192,6 +230,47 @@ const json_emitter: Emitter = {
 	axiom: (name, ty, us) =>
 		JSON.stringify({
 			axiom: { name, levelParams: us, type: ty, isUnsafe: false },
+		}),
+	inductive: (spec) =>
+		JSON.stringify({
+			inductive: {
+				types: spec.types.map((t) => ({
+					name: t.name,
+					levelParams: t.uparams,
+					type: t.ty,
+					all: t.all,
+					ctors: t.ctors,
+					isRec: t.is_rec,
+					isReflexive: false,
+					numIndices: t.num_indices,
+					numNested: 0,
+					numParams: t.num_params,
+					isUnsafe: false,
+				})),
+				ctors: spec.ctors.map((c) => ({
+					name: c.name,
+					levelParams: c.uparams,
+					type: c.ty,
+					isUnsafe: false,
+					cidx: c.cidx,
+					numParams: c.num_params,
+					numFields: c.num_fields,
+					induct: c.induct,
+				})),
+				recs: spec.recs.map((r) => ({
+					name: r.name,
+					levelParams: r.uparams,
+					type: r.ty,
+					isUnsafe: false,
+					numParams: r.num_params,
+					numIndices: r.num_indices,
+					numMotives: r.num_motives,
+					numMinors: r.num_minors,
+					rules: r.rules,
+					all: r.all,
+					k: r.k,
+				})),
+			},
 		}),
 	definition: (name, ty, value, us) =>
 		JSON.stringify({
@@ -331,6 +410,82 @@ class Writer {
 		return this.intern(this.exprs, key, line, () => this.next_expr++);
 	}
 
+	get supports_inductives(): boolean {
+		return this.out.inductive !== undefined;
+	}
+
+	inductive(spec: {
+		name: string;
+		ty: Core;
+		num_params: number;
+		num_indices: number;
+		is_rec: boolean;
+		ctors: { name: string; ty: Core; num_fields: number }[];
+		rec: {
+			name: string;
+			ty: Core;
+			uparams: string[];
+			rules: { ctor: string; nfields: number; rhs: Core }[];
+			k: boolean;
+		};
+	}) {
+		const emit = this.out.inductive;
+		if (emit === undefined) {
+			throw new Error("this format has no inductives");
+		}
+		const ind_name = this.name(spec.name);
+		const ind_ty = this.expr(spec.ty);
+		const ctor_names = spec.ctors.map((c) => this.name(c.name));
+		const ctors = spec.ctors.map((c, i) => ({
+			name: ctor_names[i]!,
+			uparams: [],
+			ty: this.expr(c.ty),
+			cidx: i,
+			num_params: spec.num_params,
+			num_fields: c.num_fields,
+			induct: ind_name,
+		}));
+		const rec_uparams = spec.rec.uparams.map((u) => this.name(u));
+		const rec_name = this.name(spec.rec.name);
+		const rec_ty = this.expr(spec.rec.ty);
+		const rules = spec.rec.rules.map((r) => ({
+			ctor: this.name(r.ctor),
+			nfields: r.nfields,
+			rhs: this.expr(r.rhs),
+		}));
+		this.lines.push(
+			emit({
+				types: [
+					{
+						name: ind_name,
+						uparams: [],
+						ty: ind_ty,
+						all: [ind_name],
+						ctors: ctor_names,
+						num_params: spec.num_params,
+						num_indices: spec.num_indices,
+						is_rec: spec.is_rec,
+					},
+				],
+				ctors,
+				recs: [
+					{
+						name: rec_name,
+						uparams: rec_uparams,
+						ty: rec_ty,
+						num_params: spec.num_params,
+						num_indices: spec.num_indices,
+						num_motives: 1,
+						num_minors: spec.ctors.length,
+						rules,
+						all: [ind_name],
+						k: spec.rec.k,
+					},
+				],
+			}),
+		);
+	}
+
 	axiom(name: string, ty: Core, uparams: string[] = []) {
 		this.lines.push(
 			this.out.axiom(
@@ -353,6 +508,160 @@ class Writer {
 	}
 }
 
+
+// ---------------------------------------------------------------------------
+// Inductive declarations
+//
+// An inductive is exported as one object carrying the type, its constructors
+// and its recursor. The recursor has to be the one the reader derives for
+// itself, which is universe polymorphic; ours are stated at a fixed sort, one
+// per sort we need. Since @rec already checked that a declared recursor *is*
+// the recursor, the polymorphic version is the same type with the motive's
+// sort replaced by a level parameter, and every declared instance becomes that
+// one constant applied to its own level.
+//
+// Binders are opened into constants whose names cannot be written, so the
+// recursor's reduction rules are assembled without de Bruijn arithmetic.
+// ---------------------------------------------------------------------------
+
+const REC_LEVEL = "u";
+
+let next_hole = 0;
+function hole(): Core & { k: "const" } {
+	return { k: "const", name: `#${next_hole++}`, levels: [] };
+}
+
+function instantiate(e: Core, value: Core, depth = 0): Core {
+	if (e.k === "bvar") {
+		if (e.idx === depth) return value;
+		return e.idx > depth ? { k: "bvar", idx: e.idx - 1 } : e;
+	}
+	if (e.k === "app") {
+		return {
+			k: "app",
+			fun: instantiate(e.fun, value, depth),
+			arg: instantiate(e.arg, value, depth),
+		};
+	}
+	if (e.k === "lam" || e.k === "pi") {
+		return {
+			k: e.k,
+			name: e.name,
+			dom: instantiate(e.dom, value, depth),
+			body: instantiate(e.body, value, depth + 1),
+		};
+	}
+	return e;
+}
+
+function abstract_hole(e: Core, name: string, depth = 0): Core {
+	if (e.k === "const") return e.name === name ? { k: "bvar", idx: depth } : e;
+	if (e.k === "app") {
+		return {
+			k: "app",
+			fun: abstract_hole(e.fun, name, depth),
+			arg: abstract_hole(e.arg, name, depth),
+		};
+	}
+	if (e.k === "lam" || e.k === "pi") {
+		return {
+			k: e.k,
+			name: e.name,
+			dom: abstract_hole(e.dom, name, depth),
+			body: abstract_hole(e.body, name, depth + 1),
+		};
+	}
+	return e;
+}
+
+type Opened = { v: Core & { k: "const" }; dom: Core; name: string };
+
+// Opens up to `limit` pi binders, reusing `values` for the outermost ones.
+function open_pis(
+	ty: Core,
+	limit = Infinity,
+	values: Core[] = [],
+): { binders: Opened[]; body: Core } {
+	const binders: Opened[] = [];
+	let cur = ty;
+	while (cur.k === "pi" && binders.length < limit) {
+		const v = (values[binders.length] as (Core & { k: "const" }) | undefined) ?? hole();
+		binders.push({ v, dom: cur.dom, name: cur.name });
+		cur = instantiate(cur.body, v);
+	}
+	return { binders, body: cur };
+}
+
+function close(binders: Opened[], body: Core, k: "pi" | "lam"): Core {
+	let out = body;
+	for (let i = binders.length - 1; i >= 0; i--) {
+		const b = binders[i]!;
+		out = { k, name: b.name, dom: b.dom, body: abstract_hole(out, b.v.name) };
+	}
+	return out;
+}
+
+function apply_core(fun: Core, args: Core[]): Core {
+	let out = fun;
+	for (const arg of args) out = { k: "app", fun: out, arg };
+	return out;
+}
+
+function core_head(e: Core): Core {
+	let cur = e;
+	while (cur.k === "app") cur = cur.fun;
+	return cur;
+}
+
+function core_args(e: Core): Core[] {
+	const args: Core[] = [];
+	let cur = e;
+	while (cur.k === "app") {
+		args.unshift(cur.arg);
+		cur = cur.fun;
+	}
+	return args;
+}
+
+// The sort a telescope ends in, as a level, or null if it does not end in one.
+function final_level(t: Core): Level | null {
+	let cur = t;
+	while (cur.k === "pi") cur = cur.body;
+	return cur.k === "sort" ? cur.level : null;
+}
+
+function set_final_sort(t: Core, level: Level): Core {
+	if (t.k === "pi") {
+		return { ...t, body: set_final_sort(t.body, level) };
+	}
+	return { k: "sort", level };
+}
+
+// The parameters are the leading binders every constructor passes to the type
+// unchanged.
+function count_core_params(ind_ty: Core, ctor_tys: Core[]): number {
+	const { binders } = open_pis(ind_ty);
+	let limit = binders.length;
+	for (const ct of ctor_tys) {
+		limit = Math.min(limit, open_pis(ct).binders.length);
+	}
+	for (let k = limit; k > 0; k--) {
+		const params = binders.slice(0, k).map((b) => b.v);
+		const ok = ctor_tys.every((ct) => {
+			const { body } = open_pis(ct, Infinity, params);
+			const args = core_args(body);
+			return (
+				args.length >= k &&
+				params.every(
+					(p, i) => args[i]!.k === "const" && (args[i] as Core & { k: "const" }).name === p.name,
+				)
+			);
+		});
+		if (ok) return k;
+	}
+	return 0;
+}
+
 // ---------------------------------------------------------------------------
 // Resolution: surface Expr -> Core
 // ---------------------------------------------------------------------------
@@ -364,6 +673,9 @@ type Env = {
 	// names already written out, used to catch forward references
 	emitted: Set<string>;
 	uses_sorry: boolean;
+	// a recursor we declared at one sort, and the polymorphic constant plus
+	// level it becomes on the way out
+	recursors: Map<string, { name: string; levels: Level[] }>;
 };
 
 // The universe level `u` such that `ty : Sort u`. Only used to instantiate
@@ -419,6 +731,8 @@ function resolve(env: Env, expr: Expr, bound: (string | null)[]): Core {
 					`(a pattern rule's body may only mention earlier declarations)`,
 			);
 		}
+		const rec = env.recursors.get(expr.ident);
+		if (rec) return { k: "const", name: rec.name, levels: rec.levels };
 		return { k: "const", name: expr.ident, levels: [] };
 	} else if (expr.type === "application") {
 		const arg = resolve(env, expr.value, bound);
@@ -466,12 +780,22 @@ type Decl = {
 	def: Expr | null;
 	// pattern rules attached to this name, in source order
 	rules: { args: Expr[]; def: Expr | null }[];
+	directives: { name: string; arg: string | null }[];
+};
+
+// An @inductive together with the @intro and @rec declarations that named it.
+type Group = {
+	decl: Decl;
+	ctors: Decl[];
+	instances: Decl[];
 };
 
 export type ExportResult = {
 	text: string;
 	axioms: number;
 	definitions: number;
+	// declarations folded into inductive blocks: types, constructors, recursors
+	inductives: number;
 	skipped: { name: string; reason: string }[];
 };
 
@@ -487,6 +811,168 @@ function spine(expr: Expr): { head: string; args: Expr[] } {
 	return { head: cur.ident, args };
 }
 
+type IndPlan = {
+	spec: Parameters<Writer["inductive"]>[0];
+	instances: { from: string; name: string; levels: Level[] }[];
+};
+
+
+// Works out the inductive block for a group, or returns the reason it cannot be
+// one. Registers what it resolves in `env`, so callers hand it a scratch copy
+// and keep it only on success.
+function plan_inductive(env: Env, group: Group): IndPlan | string {
+	if (group.instances.length === 0) return "it has no @rec";
+
+	const ind_ty = resolve(env, group.decl.ty, []);
+	env.globals.set(group.decl.name, { name: group.decl.name, ty: ind_ty });
+	env.emitted.add(group.decl.name);
+
+	const ctor_tys = group.ctors.map((c) => {
+		const ty = resolve(env, c.ty, []);
+		env.globals.set(c.name, { name: c.name, ty });
+		env.emitted.add(c.name);
+		return ty;
+	});
+
+	const num_params = count_core_params(ind_ty, ctor_tys);
+	const num_indices = open_pis(ind_ty).binders.length - num_params;
+
+	const recurses = (dom: Core) => {
+		const opened = open_pis(dom);
+		const head = core_head(opened.body);
+		return {
+			yes: head.k === "const" && head.name === group.decl.name,
+			behind_arrow: opened.binders.length > 0,
+		};
+	};
+	const shapes = ctor_tys.map((ct) => {
+		const fields = open_pis(ct).binders.slice(num_params);
+		let recursive = 0;
+		let behind_arrow = false;
+		for (const f of fields) {
+			const r = recurses(f.dom);
+			if (!r.yes) continue;
+			recursive += 1;
+			if (r.behind_arrow) behind_arrow = true;
+		}
+		return { fields: fields.length, recursive, behind_arrow };
+	});
+	if (shapes.some((s) => s.behind_arrow)) {
+		return "a constructor recurses behind an arrow";
+	}
+	if (num_indices > 0 && shapes.some((s) => s.recursive > 0)) {
+		return "it has indices and a recursive constructor";
+	}
+
+	// Each declared recursor, and the sort its motive lands in.
+	const instances = group.instances.map((decl) => {
+		const ty = resolve(env, decl.ty, []);
+		const { binders } = open_pis(ty, num_params + 1);
+		const motive = binders[num_params];
+		return { decl, ty, level: motive ? final_level(motive.dom) : null };
+	});
+	if (instances.some((i) => i.level === null)) {
+		return "a declared recursor has no motive sort";
+	}
+	// A reader derives a universe polymorphic recursor whenever the type admits
+	// large elimination. Our having declared one at Type is proof that it does;
+	// from a Prop-only declaration there is no way to tell, so leave it alone.
+	const big = instances.find((i) => i.level!.k === "num" && i.level!.n > 0);
+	if (big === undefined) {
+		return "every declared recursor is at Prop, so whether it is universe polymorphic cannot be told from here";
+	}
+
+	const rec_name = `${group.decl.name}.rec`;
+	const poly: Level = { k: "param", name: REC_LEVEL };
+	const { binders: head_binders, body: rest } = open_pis(big.ty, num_params + 1);
+	const motive_dom = head_binders[num_params]!;
+	const rec_ty = close(
+		[
+			...head_binders.slice(0, num_params),
+			{ ...motive_dom, dom: set_final_sort(motive_dom.dom, poly) },
+		],
+		rest,
+		"pi",
+	);
+
+	// The reduction rules, read off the polymorphic recursor and the
+	// constructors: each rule abstracts the parameters, the motive, the cases
+	// and the constructor's own fields.
+	const rec_const: Core = { k: "const", name: rec_name, levels: [poly] };
+	const { binders: prefix } = open_pis(
+		rec_ty,
+		num_params + 1 + group.ctors.length,
+	);
+	const params = prefix.slice(0, num_params);
+	const motive = prefix[num_params];
+	const minors = prefix.slice(num_params + 1);
+	if (motive === undefined || minors.length !== group.ctors.length) {
+		return "the declared recursor does not have one case per constructor";
+	}
+	const rec_args = [
+		...params.map((b) => b.v),
+		motive.v,
+		...minors.map((b) => b.v),
+	];
+	const rules = group.ctors.map((c, i) => {
+		const fields = open_pis(
+			ctor_tys[i]!,
+			Infinity,
+			params.map((b) => b.v),
+		).binders.slice(num_params);
+		const hypotheses = fields
+			.filter((f) => recurses(f.dom).yes)
+			.map((f) => apply_core(rec_const, [...rec_args, f.v]));
+		return {
+			ctor: c.name,
+			nfields: fields.length,
+			rhs: close(
+				[...params, motive, ...minors, ...fields],
+				apply_core(minors[i]!.v, [
+					...fields.map((f) => f.v),
+					...hypotheses,
+				]),
+				"lam",
+			),
+		};
+	});
+
+	// K-like reduction: a Prop with one constructor that carries nothing.
+	const ind_level = final_level(ind_ty);
+	const k =
+		ind_level !== null &&
+		ind_level.k === "num" &&
+		ind_level.n === 0 &&
+		group.ctors.length === 1 &&
+		shapes[0]!.fields === 0;
+
+	for (const inst of instances) {
+		env.emitted.add(inst.decl.name);
+		env.globals.set(inst.decl.name, { name: inst.decl.name, ty: inst.ty });
+	}
+
+	return {
+		spec: {
+			name: group.decl.name,
+			ty: ind_ty,
+			num_params,
+			num_indices,
+			is_rec: shapes.some((s) => s.recursive > 0),
+			ctors: group.ctors.map((c, i) => ({
+				name: c.name,
+				ty: ctor_tys[i]!,
+				num_fields: shapes[i]!.fields,
+			})),
+			rec: { name: rec_name, ty: rec_ty, uparams: [REC_LEVEL], rules, k },
+		},
+		instances: instances.map((i) => ({
+			from: i.decl.name,
+			name: rec_name,
+			levels: [i.level!],
+		})),
+	};
+}
+
 export function export_to_lean(
 	statements: Statement[],
 	opts: { header?: string; format?: Format } = {},
@@ -499,7 +985,16 @@ export function export_to_lean(
 		if (stmt.pat.type === "ident") {
 			const name = stmt.pat.ident;
 			if (by_name.has(name)) throw new Error(`${name} already defined`);
-			const decl: Decl = { name, ty: stmt.ty, def: stmt.def, rules: [] };
+			const decl: Decl = {
+				name,
+				ty: stmt.ty,
+				def: stmt.def,
+				rules: [],
+				directives: stmt.directives.map((d) => ({
+					name: d.name,
+					arg: d.arg,
+				})),
+			};
 			decls.push(decl);
 			by_name.set(name, decl);
 		} else {
@@ -517,12 +1012,65 @@ export function export_to_lean(
 		globals: new Map(),
 		emitted: new Set(),
 		uses_sorry: false,
+		recursors: new Map(),
 	};
+	const clone = (e: Env): Env => ({
+		globals: new Map(e.globals),
+		emitted: new Set(e.emitted),
+		uses_sorry: e.uses_sorry,
+		recursors: new Map(e.recursors),
+	});
+
+	// @inductive, with the @intro and @rec declarations that named it
+	const groups = new Map<string, Group>();
+	for (const decl of decls) {
+		for (const d of decl.directives) {
+			if (d.name === "inductive") {
+				groups.set(decl.name, { decl, ctors: [], instances: [] });
+			} else if (d.name === "intro" && d.arg !== null) {
+				groups.get(d.arg)?.ctors.push(decl);
+			} else if (d.name === "rec" && d.arg !== null) {
+				groups.get(d.arg)?.instances.push(decl);
+			}
+		}
+	}
+	// names emitted as part of an inductive block rather than on their own
+	const folded = new Set<string>();
+	let inductives = 0;
 	const skipped: { name: string; reason: string }[] = [];
 	let axioms = 0;
 	let definitions = 0;
 
 	for (const decl of decls) {
+		if (folded.has(decl.name)) continue;
+
+		const group = groups.get(decl.name);
+		if (group !== undefined && w.supports_inductives) {
+			const scratch = clone(env);
+			const plan = plan_inductive(scratch, group);
+			if (typeof plan === "string") {
+				skipped.push({
+					name: decl.name,
+					reason: `its constructors stay axioms, ${plan}`,
+				});
+			} else {
+				env.globals = scratch.globals;
+				env.emitted = scratch.emitted;
+				env.uses_sorry = scratch.uses_sorry;
+				for (const inst of plan.instances) {
+					env.recursors.set(inst.from, {
+						name: inst.name,
+						levels: inst.levels,
+					});
+				}
+				w.inductive(plan.spec);
+				inductives += 1 + group.ctors.length + group.instances.length;
+				for (const c of group.ctors) folded.add(c.name);
+				for (const i of group.instances) folded.add(i.name);
+				continue;
+			}
+		}
+
 		const ty = resolve(env, decl.ty, []);
 		env.globals.set(decl.name, { name: decl.name, ty });
 
@@ -568,7 +1116,13 @@ export function export_to_lean(
 	}
 
 	const lines = opts.header ? [opts.header, ...w.lines] : w.lines;
-	return { text: lines.join("\n") + "\n", axioms, definitions, skipped };
+	return {
+		text: lines.join("\n") + "\n",
+		axioms,
+		definitions,
+		inductives,
+		skipped,
+	};
 }
 
 // Turns `f a b : T := v` into `fun (a : A) (b : B) => v`, taking the binder

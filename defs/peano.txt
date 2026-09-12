@@ -44,10 +44,6 @@ Nat.Add : Nat -> Nat -> Nat := (a : Nat) => (b : Nat) =>
 		((n : Nat) => (ih : Nat) => Nat.succ ih)
 		b;
 
-// These two say how Nat.rec computes, which it cannot do while it is an axiom:
-// nothing reduces, so `Nat.Add x Nat.zero` just sits there. Both become
-// `Eq.refl` the day Nat is a real inductive type with a recursor that fires.
-// ∀ x ∈ ℕ. x + 0 = x
 // pred 0 = 0, and a - b = 0 once b reaches a: truncated, as it has to be
 // without negative numbers.
 Nat.pred : Nat -> Nat :=
@@ -58,11 +54,14 @@ Nat.Sub : Nat -> Nat -> Nat :=
 	(a : Nat) => (b : Nat) =>
 	Nat.rec ((t : Nat) => Nat) a ((m : Nat) => (ih : Nat) => Nat.pred ih) b;
 
-@axiom
-Nat.Add.add_zero : (x : Nat) -> Eq Nat (Nat.Add x Nat.zero) x;
+// These say how Nat.rec computes, and it does: both sides are the same term
+// once the recursor fires, so reflexivity proves them.
+// ∀ x ∈ ℕ. x + 0 = x
+Nat.Add.add_zero : (x : Nat) -> Eq Nat (Nat.Add x Nat.zero) x :=
+	(x : Nat) => Eq.refl Nat x;
 // ∀ x, y ∈ ℕ. x + S y = S (x + y)
-@axiom
-Nat.Add.add_succ : (x : Nat) -> (y : Nat) -> Eq Nat (Nat.Add x (Nat.succ y)) (Nat.succ (Nat.Add x y));
+Nat.Add.add_succ : (x : Nat) -> (y : Nat) -> Eq Nat (Nat.Add x (Nat.succ y)) (Nat.succ (Nat.Add x y)) :=
+	(x : Nat) => (y : Nat) => Eq.refl Nat (Nat.succ (Nat.Add x y));
 
 // ∀ x ∈ ℕ. 0 + x = x
 Nat.Add.zero_add : (x : Nat) -> Eq Nat (Nat.Add Nat.zero x) x :=
