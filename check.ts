@@ -8,6 +8,23 @@ type Globals = {
 		rules: { pat: Expr; ty: Expr; def: Expr }[];
 		// set by @inductive; constructors are filled in by @intro(...)
 		inductive?: { constructors: string[] };
+		// set by @rec(X): everything iota needs to fire
+		recursor?: {
+			ind: string;
+			num_params: number;
+			num_indices: number;
+			constructors: string[];
+			// how many fields and which of them recurse, per constructor.
+			// `reducible` is false when the induction hypotheses cannot be
+			// rebuilt from the term alone, which is when a recursive field
+			// sits behind an arrow, or the type has indices: both need the
+			// field's *type*, and reduction only has the term.
+			fields: {
+				total: number;
+				recursive: number[];
+				reducible: boolean;
+			}[];
+		};
 	};
 };
 const error_ty = { type: "error" as const, tokens: [] as Token[] };
@@ -178,7 +195,7 @@ function destructure(
 		// the argument and every ref to it in the tail are the same value
 		const bound = opaque(head);
 		ref_vals.push(bound);
-		const tail = reduce_simp_app(subst_refs(fun_ty.tail, ref_vals));
+		const tail = reduce_simp_app(globals, subst_refs(fun_ty.tail, ref_vals));
 		if (!is_subtype(globals, tail, ty)) {
 			throw new Error(
 				`expected type ${print_expr(tail)} to be a subtype of ${print_expr(ty)}`,
@@ -240,7 +257,7 @@ function typeof_app(
 		}
 		// rewrite every ref in tail that references the head
 		const tail = fun.tail;
-		return reduce_simp_app(app_subst_new_refs(tail, value));
+		return reduce_simp_app(globals, app_subst_new_refs(tail, value));
 	} else if (fun.type === "sorry") {
 		return value;
 	} else {
@@ -317,6 +334,7 @@ function type_of(
 		// typeof(((a:Ty) => a) b) = apply(typeof(a), b)
 		const fun_ty = type_of(globals, value.fun, inner_defs, ref_tys);
 		return reduce_simp_app(
+			globals,
 			typeof_app(globals, fun_ty, value.value, inner_defs, ref_tys),
 		);
 	} else if (value.type === "value_with_type") {
@@ -414,44 +432,101 @@ function app_subst_new_refs(tail: Expr, value: Expr, depth = 1): Expr {
 }
 
 // aka beta reduction. reduces expressions of the form `(A => B) a`
-function reduce_simp_app(expr: Expr): Expr {
+// `X.rec p.. motive minors.. i.. (X.c p.. a..)` reduces to the minor premise
+// for `c`, applied to the constructor's fields and then to an induction
+// hypothesis for each field that recurses. Every step eats one constructor, so
+// this terminates.
+function reduce_iota(globals: Globals | null, expr: Expr): Expr | null {
+	if (globals === null) return null;
+	const args = spine_args(expr);
+	const head = head_of(expr);
+	if (head.type !== "global") return null;
+	const rec = globals[head.ident]?.recursor;
+	if (rec === undefined) return null;
+
+	const major_at = rec.num_params + 1 + rec.constructors.length + rec.num_indices;
+	if (args.length <= major_at) return null;
+
+	const major = reduce_simp_app(globals, args[major_at]!);
+	const ctor = head_of(major);
+	if (ctor.type !== "global") return null;
+	const which = rec.constructors.indexOf(ctor.ident);
+	if (which === -1) return null;
+
+	const minor = args[rec.num_params + 1 + which]!;
+	const shape = rec.fields[which]!;
+	if (!shape.reducible) return null;
+	const ctor_args = spine_args(major);
+	const fields = ctor_args.slice(rec.num_params);
+	if (fields.length !== shape.total) return null;
+
+	// the recursor applied to everything up to but not including the major
+	const rec_prefix = args.slice(0, rec.num_params + 1 + rec.constructors.length);
+	const hypotheses = shape.recursive.map((i) => {
+		// the field is another X, so recurse on it. No indices to supply:
+		// `reducible` is false for a recursive field of an indexed type,
+		// because the indices live in the field's type and reduction only has
+		// the term.
+		const field = fields[i]!;
+		let out: Expr = head;
+		for (const a of [...rec_prefix, field]) {
+			out = { type: "application", fun: out, value: a, tokens: [] };
+		}
+		return out;
+	});
+
+	let out = minor;
+	for (const a of [...fields, ...hypotheses]) {
+		out = { type: "application", fun: out, value: a, tokens: [] };
+	}
+	// anything the recursor was applied to beyond the major premise still
+	// applies to the result
+	for (const a of args.slice(major_at + 1)) {
+		out = { type: "application", fun: out, value: a, tokens: [] };
+	}
+	return reduce_simp_app(globals, out);
+}
+
+function reduce_simp_app(globals: Globals | null, expr: Expr): Expr {
 	if (expr.type === "application") {
 		// the function has to be reduced first: in `f a b`, reducing `f a` is
 		// what turns the outer application into a redex at all, which is how a
 		// global that unfolds to several nested lambdas gets applied to all of
 		// its arguments
-		const fun = reduce_simp_app(expr.fun);
-		const value = reduce_simp_app(expr.value);
+		const fun = reduce_simp_app(globals, expr.fun);
+		const value = reduce_simp_app(globals, expr.value);
 		if (fun.type === "lambda") {
-			return reduce_simp_app(app_subst_new_refs(fun.tail, value));
+			return reduce_simp_app(globals, app_subst_new_refs(fun.tail, value));
 		} else if (fun.type === "value_with_type") {
 			if (fun.ty.type === "pi") {
 				return reduce_simp_app(
+					globals,
 					app_subst_new_refs(fun.ty.tail, value),
 				);
 			} else {
 				throw new Error("idk");
 			}
 		} else {
-			return {
+			const applied: Expr = {
 				type: "application",
 				fun,
 				value,
 				tokens: [],
 			};
+			return reduce_iota(globals, applied) ?? applied;
 		}
 	} else if (expr.type === "lambda") {
 		return {
 			type: "lambda",
-			head: reduce_simp_app(expr.head),
-			tail: reduce_simp_app(expr.tail),
+			head: reduce_simp_app(globals, expr.head),
+			tail: reduce_simp_app(globals, expr.tail),
 			tokens: [],
 		};
 	} else if (expr.type === "pi") {
 		return {
 			type: "pi",
-			head: reduce_simp_app(expr.head),
-			tail: reduce_simp_app(expr.tail),
+			head: reduce_simp_app(globals, expr.head),
+			tail: reduce_simp_app(globals, expr.tail),
 			tokens: [],
 		};
 	} else {
@@ -897,6 +972,29 @@ function derive_recursor(
 	);
 }
 
+// Everything iota needs, worked out once when @rec is checked.
+function recursor_info(globals: Globals, ind: string) {
+	const { binders: ind_binders } = open_telescope(globals[ind]!.ty);
+	const num_params = count_params(globals, ind, ind_binders);
+	const num_indices = ind_binders.length - num_params;
+	const constructors = globals[ind]!.inductive!.constructors;
+	const fields = constructors.map((c) => {
+		const { binders } = open_telescope(globals[c]!.ty);
+		const own = binders.slice(num_params);
+		const recursive: number[] = [];
+		let reducible = true;
+		own.forEach((field, i) => {
+			const { binders: inner, body } = open_telescope(field.dom);
+			const head = head_of(body);
+			if (!(head.type === "global" && head.ident === ind)) return;
+			recursive.push(i);
+			if (inner.length > 0 || num_indices > 0) reducible = false;
+		});
+		return { total: own.length, recursive, reducible };
+	});
+	return { ind, num_params, num_indices, constructors, fields };
+}
+
 // @rec(X): the declared type has to be the recursor for X. The motive's sort is
 // read off the declaration rather than derived, since this language has no
 // universe polymorphism and states X.rec and X.rec_prop separately.
@@ -1081,9 +1179,9 @@ export function check_stmt(
 		// For pattern match rules, ty may reference pattern variables (e.g. `left A a b : A`).
 		// Destructure against Any first to populate inner_defs, then resolve ty in that context.
 		destructure(globals, pat, { type: "any", tokens: [] }, def_names, inner_defs);
-		ty = reduce_simp_app(norm_names(globals, stmt.ty, inner_defs));
+		ty = reduce_simp_app(globals, norm_names(globals, stmt.ty, inner_defs));
 	} else {
-		ty = reduce_simp_app(norm_names(globals, stmt.ty));
+		ty = reduce_simp_app(globals, norm_names(globals, stmt.ty));
 		// Nothing to destructure. The head of a plain declaration is the name
 		// being declared, not a pattern variable, and binding it would put the
 		// declaration in scope inside its own definition: `bad : False := bad`
@@ -1097,7 +1195,7 @@ export function check_stmt(
 	// a binder type inside the value has to end up in the same shape as the
 	// declared type it is compared against
 	const def = stmt.def
-		? reduce_simp_app(norm_names(globals, stmt.def, inner_defs))
+		? reduce_simp_app(globals, norm_names(globals, stmt.def, inner_defs))
 		: null;
 
 	if (def) {
@@ -1121,6 +1219,8 @@ export function check_stmt(
 				globals[first]!.inductive = { constructors: [] };
 			} else if (directive.name === "intro") {
 				globals[directive.arg!]!.inductive!.constructors.push(first);
+			} else if (directive.name === "rec") {
+				globals[first]!.recursor = recursor_info(globals, directive.arg!);
 			}
 		}
 	} else if (stmt.pat.type === "application") {

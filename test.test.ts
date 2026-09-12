@@ -310,6 +310,64 @@ test("a declaration cannot assume itself", async () => {
 	expect(await check(`T : Type := T;`)).toThrow();
 });
 
+// Iota: a recursor applied to a constructor reduces to the matching case, so
+// arithmetic computes and its equations hold by reflexivity. The exporter still
+// emits inductives as axioms, so these proofs cannot be exported yet - the defs
+// keep the equations as assumptions until it can.
+test("recursors compute", async () => {
+	const nat = `
+		@inductive
+		Nat : Type;
+		@intro(Nat)
+		Nat.zero : Nat;
+		@intro(Nat)
+		Nat.succ : Nat -> Nat;
+		@rec(Nat)
+		Nat.rec :
+			(motive : Nat -> Type) ->
+			(case_zero : motive Nat.zero) ->
+			(case_succ : (n : Nat) -> motive n -> motive (Nat.succ n)) ->
+			(target : Nat) ->
+			motive target;
+		@axiom
+		Eq : ( A : Type ) -> ( a : A ) -> ( b : A ) -> Prop;
+		@axiom
+		Eq.refl : ( A : Type ) -> ( x : A ) -> Eq A x x;
+		Nat.Add : Nat -> Nat -> Nat := (a : Nat) => (b : Nat) =>
+			Nat.rec ((n : Nat) => Nat) a ((n : Nat) => (ih : Nat) => Nat.succ ih) b;
+	`;
+	const check = async (extra: string) => {
+		const statements = await expand("main.txt", async () => nat + extra);
+		return () => check_program(new_globals(), statements);
+	};
+
+	// x + 0 = x, by reflexivity rather than by assumption
+	expect(
+		await check(`
+		add_zero : (x : Nat) -> Eq Nat (Nat.Add x Nat.zero) x :=
+			(x : Nat) => Eq.refl Nat x;
+		`),
+	).not.toThrow();
+
+	// and concrete arithmetic, which needs the recursor to fire twice
+	expect(
+		await check(`
+		two : Nat := Nat.succ (Nat.succ Nat.zero);
+		four : Nat := Nat.succ (Nat.succ (Nat.succ (Nat.succ Nat.zero)));
+		sum : Eq Nat (Nat.Add two two) four := Eq.refl Nat four;
+		`),
+	).not.toThrow();
+
+	// it is reduction, not wishful thinking
+	expect(
+		await check(`
+		two : Nat := Nat.succ (Nat.succ Nat.zero);
+		three : Nat := Nat.succ (Nat.succ (Nat.succ Nat.zero));
+		sum : Eq Nat (Nat.Add two two) three := Eq.refl Nat three;
+		`),
+	).toThrow();
+});
+
 test("parse_directive", () => {
 	const source = `
 	@require "prop"
