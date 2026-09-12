@@ -1084,7 +1084,10 @@ export function check_stmt(
 		ty = reduce_simp_app(norm_names(globals, stmt.ty, inner_defs));
 	} else {
 		ty = reduce_simp_app(norm_names(globals, stmt.ty));
-		destructure(globals, pat, ty, def_names, inner_defs);
+		// Nothing to destructure. The head of a plain declaration is the name
+		// being declared, not a pattern variable, and binding it would put the
+		// declaration in scope inside its own definition: `bad : False := bad`
+		// would then check, with the body reading as "some proof of False".
 	}
 
 	check_is_type(globals, ty, inner_defs);

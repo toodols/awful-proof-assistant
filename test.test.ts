@@ -293,6 +293,23 @@ test("every axiom in the export is marked in the source", async () => {
 	expect(assumed.length).toBeLessThan(marked.length);
 });
 
+// Nothing here terminates, so the only thing standing between the language and
+// `bad : False := bad` is that a name is not in scope until its declaration is
+// finished. It has to stay that way.
+test("a declaration cannot assume itself", async () => {
+	const check = async (source: string) => {
+		const statements = await expand("main.txt", async () => source);
+		return () => check_program(new_globals(), statements);
+	};
+	const FALSE = `@inductive\nFalse : Prop;\n`;
+	expect(await check(FALSE + `bad : False := bad;`)).toThrow();
+	expect(
+		await check(FALSE + `bad1 : False := bad2;\nbad2 : False := bad1;`),
+	).toThrow();
+	// the type may not refer to itself either
+	expect(await check(`T : Type := T;`)).toThrow();
+});
+
 test("parse_directive", () => {
 	const source = `
 	@require "prop"
