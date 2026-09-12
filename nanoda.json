@@ -1,0 +1,6 @@
+{
+	"export_file_path": "main.json",
+	"pp_declars": ["Nat.Add.add_zero", "Int.Add"],
+	"pp_to_stdout": true,
+	"print_success_message": true
+}
