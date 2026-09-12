@@ -50,6 +50,14 @@ Nat.pred : Nat -> Nat :=
 	(n : Nat) =>
 	Nat.rec ((t : Nat) => Nat) Nat.zero ((m : Nat) => (ih : Nat) => m) n;
 
+Nat.double : Nat -> Nat :=
+	(n : Nat) =>
+	Nat.rec
+		((t : Nat) => Nat)
+		Nat.zero
+		((m : Nat) => (ih : Nat) => Nat.succ (Nat.succ ih))
+		n;
+
 Nat.Sub : Nat -> Nat -> Nat :=
 	(a : Nat) => (b : Nat) =>
 	Nat.rec ((t : Nat) => Nat) a ((m : Nat) => (ih : Nat) => Nat.pred ih) b;
@@ -138,3 +146,77 @@ Nat.Add.succ_add : (x : Nat) -> (y : Nat) -> Eq Nat (Nat.Add (Nat.succ x) y) (Na
 					)
 				)
 		);
+
+// succ is injective: pred undoes it, and pred computes.
+Nat.succ_inj : (a : Nat) -> (b : Nat) ->
+	Eq Nat (Nat.succ a) (Nat.succ b) -> Eq Nat a b :=
+	(a : Nat) => (b : Nat) => (h : Eq Nat (Nat.succ a) (Nat.succ b)) =>
+	Eq.congr Nat Nat Nat.pred (Nat.succ a) (Nat.succ b) h;
+
+// True at zero and False at every successor, so transporting True.triv along a
+// supposed equality between the two lands on False.
+Nat.is_zero : Nat -> Prop :=
+	(n : Nat) =>
+	Nat.rec ((t : Nat) => Prop) True ((m : Nat) => (ih : Prop) => False) n;
+
+Nat.zero_ne_succ : (n : Nat) -> Eq Nat Nat.zero (Nat.succ n) -> False :=
+	(n : Nat) => (h : Eq Nat Nat.zero (Nat.succ n)) =>
+	Eq.rec_prop Nat Nat.zero
+		((b : Nat) => (p : Eq Nat Nat.zero b) => Nat.is_zero b)
+		True.triv
+		(Nat.succ n)
+		h;
+
+Nat.succ_ne_zero : (n : Nat) -> Eq Nat (Nat.succ n) Nat.zero -> False :=
+	(n : Nat) => (h : Eq Nat (Nat.succ n) Nat.zero) =>
+	Nat.zero_ne_succ n (Eq.symm Nat (Nat.succ n) Nat.zero h);
+
+// double is injective. Induction on the first argument with the second still
+// quantified, then cases on the second.
+Nat.double_inj.zero : (b : Nat) ->
+	Eq Nat (Nat.double Nat.zero) (Nat.double b) -> Eq Nat Nat.zero b :=
+	Nat.rec_prop
+		((b : Nat) =>
+			Eq Nat (Nat.double Nat.zero) (Nat.double b) -> Eq Nat Nat.zero b)
+		((h : Eq Nat Nat.zero Nat.zero) => Eq.refl Nat Nat.zero)
+		((b : Nat) =>
+			(ih : Eq Nat (Nat.double Nat.zero) (Nat.double b) ->
+				Eq Nat Nat.zero b) =>
+			(h : Eq Nat Nat.zero (Nat.succ (Nat.succ (Nat.double b)))) =>
+			False.elim (Eq Nat Nat.zero (Nat.succ b))
+				(Nat.zero_ne_succ (Nat.succ (Nat.double b)) h));
+
+Nat.double_inj.succ : (a : Nat) ->
+	((b : Nat) -> Eq Nat (Nat.double a) (Nat.double b) -> Eq Nat a b) ->
+	(b : Nat) ->
+	Eq Nat (Nat.double (Nat.succ a)) (Nat.double b) -> Eq Nat (Nat.succ a) b :=
+	(a : Nat) =>
+	(ih : (b : Nat) -> Eq Nat (Nat.double a) (Nat.double b) -> Eq Nat a b) =>
+	Nat.rec_prop
+		((b : Nat) =>
+			Eq Nat (Nat.double (Nat.succ a)) (Nat.double b) ->
+			Eq Nat (Nat.succ a) b)
+		((h : Eq Nat (Nat.succ (Nat.succ (Nat.double a))) Nat.zero) =>
+			False.elim (Eq Nat (Nat.succ a) Nat.zero)
+				(Nat.succ_ne_zero (Nat.succ (Nat.double a)) h))
+		((b : Nat) =>
+			(ihb : Eq Nat (Nat.double (Nat.succ a)) (Nat.double b) ->
+				Eq Nat (Nat.succ a) b) =>
+			(h : Eq Nat
+				(Nat.succ (Nat.succ (Nat.double a)))
+				(Nat.succ (Nat.succ (Nat.double b)))) =>
+			Eq.congr Nat Nat Nat.succ a b
+				(ih b
+					(Nat.succ_inj (Nat.double a) (Nat.double b)
+						(Nat.succ_inj
+							(Nat.succ (Nat.double a))
+							(Nat.succ (Nat.double b))
+							h))));
+
+Nat.double_inj : (a : Nat) -> (b : Nat) ->
+	Eq Nat (Nat.double a) (Nat.double b) -> Eq Nat a b :=
+	Nat.rec_prop
+		((a : Nat) =>
+			(b : Nat) -> Eq Nat (Nat.double a) (Nat.double b) -> Eq Nat a b)
+		Nat.double_inj.zero
+		Nat.double_inj.succ;

@@ -542,9 +542,15 @@ function reduce_simp_app(globals: Globals | null, expr: Expr): Expr {
 	}
 }
 
-function is_subtype(globals: Globals, subty: Expr, ty: Expr): boolean {
+function is_subtype(
+	globals: Globals,
+	subty: Expr,
+	ty: Expr,
+	// \i : ref[i]
+	ref_tys: Expr[] = [],
+): boolean {
 	if (ty.type === "any") return true;
-	return struct_eq(globals, subty, ty);
+	return struct_eq(globals, subty, ty, ref_tys);
 }
 
 function member_of(
@@ -554,7 +560,12 @@ function member_of(
 	inner_defs: Record<string, Expr> = {},
 	ref_tys: Expr[] = [],
 ): boolean {
-	return is_subtype(defs, type_of(defs, expr, inner_defs, ref_tys), ty);
+	return is_subtype(
+		defs,
+		type_of(defs, expr, inner_defs, ref_tys),
+		ty,
+		ref_tys,
+	);
 }
 
 // Rename ident in and out of bound variables to use de Bruijn indices and stuff
@@ -665,14 +676,24 @@ function norm_names(
 // Pass globals to enable proof irrelevance (any two proofs of the same Prop are equal).
 // Pass null to do a plain structural comparison without proof irrelevance (used internally
 // to compare types while checking proof irrelevance, avoiding infinite recursion).
-function struct_eq(globals: Globals | null, a: Expr, b: Expr): boolean {
+// `ref_tys` is what makes proof irrelevance reach a bound variable: without it
+// a proof that is a binder cannot be typed, so two proofs of the same Prop are
+// only ever recognised as equal when both are closed.
+function struct_eq(
+	globals: Globals | null,
+	a: Expr,
+	b: Expr,
+	ref_tys: Expr[] = [],
+): boolean {
 	if (globals !== null) {
 		try {
-			const ty_a = type_of(globals, a);
-			const ty_b = type_of(globals, b);
+			// copies: type_of pushes and pops as it goes and may throw part
+			// way through, and the catch below would leave ours corrupted
+			const ty_a = type_of(globals, a, {}, [...ref_tys]);
+			const ty_b = type_of(globals, b, {}, [...ref_tys]);
 			// use plain structural comparison for the type check to avoid infinite recursion
 			if (struct_eq(null, ty_a, ty_b)) {
-				const ty_ty = type_of(globals, ty_a);
+				const ty_ty = type_of(globals, ty_a, {}, [...ref_tys]);
 				if (ty_ty.type === "global" && ty_ty.ident === "Prop") {
 					return true;
 				}
@@ -682,21 +703,28 @@ function struct_eq(globals: Globals | null, a: Expr, b: Expr): boolean {
 	if (a.type === "application") {
 		return (
 			b.type === "application" &&
-			struct_eq(globals, a.fun, b.fun) &&
-			struct_eq(globals, a.value, b.value)
+			struct_eq(globals, a.fun, b.fun, ref_tys) &&
+			struct_eq(globals, a.value, b.value, ref_tys)
 		);
 	} else if (a.type === "lambda") {
-		return (
-			b.type === "lambda" &&
-			struct_eq(globals, a.head, b.head) &&
-			struct_eq(globals, a.tail, b.tail)
-		);
+		if (b.type !== "lambda") return false;
+		// inside the binder the context has grown by one
+		if (!struct_eq(globals, a.head, b.head, ref_tys)) return false;
+		ref_tys.push(a.head);
+		try {
+			return struct_eq(globals, a.tail, b.tail, ref_tys);
+		} finally {
+			ref_tys.pop();
+		}
 	} else if (a.type === "pi") {
-		return (
-			b.type === "pi" &&
-			struct_eq(globals, a.head, b.head) &&
-			struct_eq(globals, a.tail, b.tail)
-		);
+		if (b.type !== "pi") return false;
+		if (!struct_eq(globals, a.head, b.head, ref_tys)) return false;
+		ref_tys.push(a.head);
+		try {
+			return struct_eq(globals, a.tail, b.tail, ref_tys);
+		} finally {
+			ref_tys.pop();
+		}
 	} else if (a.type === "global") {
 		return b.type === "global" && a.ident === b.ident;
 	} else if (a.type === "ref") {

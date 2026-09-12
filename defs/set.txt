@@ -2,15 +2,10 @@
 @require "equality.txt"
 @require "peano.txt"
 
-// A set over A is a predicate on A.
 Set : (A : Type) -> Type := (A : Type) => A -> Prop;
 
 zero_set : Set Nat := (x : Nat) => Eq Nat x Nat.zero;
 
-// f never sends two arguments to the same place.
-// A pi into Prop is a Prop, so this is a definition rather than an axiom: a
-// proof of `Injective A B f` *is* the function that turns `f a = f b` into
-// `a = b`, so it needs no intro and no eliminator.
 Injective : (A : Type) -> (B : Type) -> (f : A -> B) -> Prop :=
 	(A : Type) => (B : Type) => (f : A -> B) =>
 	(a : A) -> (b : A) -> Eq B (f a) (f b) -> Eq A a b;
@@ -30,9 +25,6 @@ Bijective.intro : (A : Type) -> (B : Type) -> (f : A -> B) ->
 	(inj : Injective A B f) => (sur : Surjective A B f) =>
 	Prop.And.intro (Injective A B f) (Surjective A B f) inj sur;
 
-// There are no sigma types here, so a bijection between A and B is the
-// proposition that a bijective function exists. That is all cardinality needs:
-// it never has to take the function back out.
 Bijection : (A : Type) -> (B : Type) -> Prop :=
 	(A : Type) => (B : Type) =>
 	Exists (A -> B) ((f : A -> B) => Bijective A B f);
@@ -42,8 +34,6 @@ Bijection.intro : (A : Type) -> (B : Type) -> (f : A -> B) ->
 	(A : Type) => (B : Type) => (f : A -> B) => (bij : Bijective A B f) =>
 	Exists.intro (A -> B) ((g : A -> B) => Bijective A B g) f bij;
 
-// The identity function is injective and surjective, so every type stands in
-// bijection with itself.
 Bijection.refl : (A : Type) -> Bijection A A :=
 	(A : Type) =>
 	Bijection.intro A A ((a : A) => a)
@@ -52,22 +42,39 @@ Bijection.refl : (A : Type) -> Bijection A A :=
 			((b : A) =>
 				Exists.intro A ((a : A) => Eq A a b) b (Eq.refl A b)));
 
-// Cardinality. Two types have the same cardinal exactly when a bijection
-// between them exists; `Cardinal.eq` is what makes `Cardinal` mean anything.
 @axiom
-Cardinal : Type;
+Quot : (A : Type1) -> (A -> A -> Prop) -> Type;
+
 @axiom
-Cardinal.of : (A : Type) -> Cardinal;
+Quot.mk : (A : Type1) -> (R : A -> A -> Prop) -> A -> Quot A R;
+
 @axiom
-Cardinal.eq : (A : Type) -> (B : Type) -> Bijection A B ->
-	Eq Cardinal (Cardinal.of A) (Cardinal.of B);
+Quot.eq : (A : Type1) -> (R : A -> A -> Prop) ->
+    (a : A) -> (b : A) -> R a b ->
+    Eq (Quot A R) (Quot.mk A R a) (Quot.mk A R b);
+
+@axiom
+Quot.lift :
+    (A : Type1) -> (R : A -> A -> Prop) ->
+    (B : Type) ->
+    (f : A -> B) ->
+    ((a : A) -> (b : A) -> R a b -> Eq B (f a) (f b)) ->
+    Quot A R -> B;
+
+Cardinal : Type := Quot Type ((a : Type) => (b : Type) => Bijection a b);
+
+Cardinal.of : Type -> Cardinal :=
+	(A : Type) =>
+		Quot.mk Type ((a : Type) => (b : Type) => Bijection a b) A;
 
 Cardinal.refl : (A : Type) -> Eq Cardinal (Cardinal.of A) (Cardinal.of A) :=
-	(A : Type) => Cardinal.eq A A (Bijection.refl A);
+	(A : Type) => Eq.refl Cardinal (Cardinal.of A);
 
-// The cardinality of a *set* is the cardinality of the type of its members, so
-// it needs the subtype carved out by a predicate. No such type former exists
-// here, so state one: `Sub A s` is the members of A that satisfy s.
+// `k` needs its type, and `k = n` holds for every n: evenness is n being
+// twice something.
+Even : Set Nat :=
+	(n : Nat) => Exists Nat ((k : Nat) => Eq Nat (Nat.double k) n);
+
 @inductive
 Sub : (A : Type) -> (s : Set A) -> Type;
 @intro(Sub)
@@ -117,3 +124,84 @@ Sub.property : (A : Type) -> (s : Set A) -> (x : Sub A s) ->
 
 Set.Card : (A : Type) -> Set A -> Cardinal :=
 	(A : Type) => (s : Set A) => Cardinal.of (Sub A s);
+
+// ---------------------------------------------------------------------------
+// The even numbers are in bijection with the naturals.
+//
+// The map is k |-> 2k, from Nat into the subtype. That direction is the one to
+// prove: Bijection is the *existence* of a bijective function, and taking the
+// inverse of one needs choice, so Bijection A B does not give Bijection B A.
+// ---------------------------------------------------------------------------
+
+Even.enum : Nat -> Sub Nat Even :=
+	(k : Nat) =>
+	Sub.intro Nat Even (Nat.double k)
+		(Exists.intro Nat
+			((j : Nat) => Eq Nat (Nat.double j) (Nat.double k))
+			k
+			(Eq.refl Nat (Nat.double k)));
+
+// Sub.val undoes Sub.intro by reduction, so equal outputs give 2a = 2b, and
+// doubling is injective.
+Even.enum_injective : Injective Nat (Sub Nat Even) Even.enum :=
+	(a : Nat) => (b : Nat) =>
+	(h : Eq (Sub Nat Even) (Even.enum a) (Even.enum b)) =>
+	Nat.double_inj a b
+		(Eq.congr (Sub Nat Even) Nat (Sub.val Nat Even)
+			(Even.enum a) (Even.enum b) h);
+
+// Rewriting n to 2k leaves two subtype elements that differ only in which proof
+// of evenness they carry, and proofs of a Prop are interchangeable.
+Even.enum_eq : (k : Nat) -> (n : Nat) -> Eq Nat (Nat.double k) n ->
+	(hn : Even n) ->
+	Eq (Sub Nat Even) (Even.enum k) (Sub.intro Nat Even n hn) :=
+	(k : Nat) => (n : Nat) => (hk : Eq Nat (Nat.double k) n) =>
+	(hn : Even n) =>
+	Eq.rec_prop Nat (Nat.double k)
+		((b : Nat) => (p : Eq Nat (Nat.double k) b) =>
+			(hb : Even b) ->
+			Eq (Sub Nat Even) (Even.enum k) (Sub.intro Nat Even b hb))
+		((hb : Even (Nat.double k)) =>
+			Eq.refl (Sub Nat Even) (Even.enum k))
+		n
+		hk
+		hn;
+
+// Every even n is 2k for some k, and that k is the one the map sends to it.
+Even.enum_hits : (n : Nat) -> (hn : Even n) ->
+	Exists Nat ((j : Nat) =>
+		Eq (Sub Nat Even) (Even.enum j) (Sub.intro Nat Even n hn)) :=
+	(n : Nat) => (hn : Even n) =>
+	Exists.elim Nat ((k : Nat) => Eq Nat (Nat.double k) n)
+		(Exists Nat ((j : Nat) =>
+			Eq (Sub Nat Even) (Even.enum j) (Sub.intro Nat Even n hn)))
+		hn
+		((k : Nat) => (hk : Eq Nat (Nat.double k) n) =>
+			Exists.intro Nat
+				((j : Nat) =>
+					Eq (Sub Nat Even) (Even.enum j) (Sub.intro Nat Even n hn))
+				k
+				(Even.enum_eq k n hk hn));
+
+Even.enum_surjective : Surjective Nat (Sub Nat Even) Even.enum :=
+	(y : Sub Nat Even) =>
+	Sub.rec_prop Nat Even
+		((t : Sub Nat Even) =>
+			Exists Nat ((j : Nat) => Eq (Sub Nat Even) (Even.enum j) t))
+		Even.enum_hits
+		y;
+
+Even.bijection : Bijection Nat (Sub Nat Even) :=
+	Bijection.intro Nat (Sub Nat Even) Even.enum
+		(Bijective.intro Nat (Sub Nat Even) Even.enum
+			Even.enum_injective
+			Even.enum_surjective);
+
+// and so the evens are exactly as many as the naturals
+Even.same_cardinal :
+	Eq Cardinal (Cardinal.of Nat) (Cardinal.of (Sub Nat Even)) :=
+	Quot.eq Type
+		((a : Type) => (b : Type) => Bijection a b)
+		Nat
+		(Sub Nat Even)
+		Even.bijection;
