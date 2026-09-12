@@ -7,8 +7,23 @@ List.nil : (El : Type) -> List El;
 @intro(List)
 List.cons : (El : Type) -> (head : El) -> (tail : List El) -> List El;
 
-@axiom
-List.Len : (El : Type) -> (list : List El) -> Nat;
+@rec(List)
+List.rec :
+	(El : Type) ->
+	(motive : List El -> Type) ->
+	(case_nil : motive (List.nil El)) ->
+	(case_cons : (head : El) -> (tail : List El) -> motive tail ->
+		motive (List.cons El head tail)) ->
+	(target : List El) ->
+	motive target;
+
+List.Len : (El : Type) -> (list : List El) -> Nat :=
+	(El : Type) => (list : List El) =>
+	List.rec El
+		((t : List El) => Nat)
+		Nat.zero
+		((head : El) => (tail : List El) => (ih : Nat) => Nat.succ ih)
+		list;
 // Proof that len([]) = 0
 @axiom
 List.Len.nil : (El : Type) -> Eq Nat (List.Len El (List.nil El)) Nat.zero;
@@ -17,8 +32,14 @@ List.Len.nil : (El : Type) -> Eq Nat (List.Len El (List.nil El)) Nat.zero;
 List.Len.cons : (El : Type) -> (head: El) -> (tail : List El) ->
 	Eq Nat (List.Len El (List.cons El head tail)) (Nat.succ (List.Len El tail));
 
-@axiom
-List.Join : (El : Type) -> (a : List El) -> (b : List El) -> List El;
+List.Join : (El : Type) -> (a : List El) -> (b : List El) -> List El :=
+	(El : Type) => (a : List El) => (b : List El) =>
+	List.rec El
+		((t : List El) => List El)
+		b
+		((head : El) => (tail : List El) => (ih : List El) =>
+			List.cons El head ih)
+		a;
 // Join([], a) = a
 @axiom
 List.Join.nil : (El : Type) -> (a : List El) ->

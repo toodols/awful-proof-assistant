@@ -72,8 +72,24 @@ Cardinal.refl : (A : Type) -> Eq Cardinal (Cardinal.of A) (Cardinal.of A) :=
 Sub : (A : Type) -> (s : Set A) -> Type;
 @intro(Sub)
 Sub.intro : (A : Type) -> (s : Set A) -> (a : A) -> s a -> Sub A s;
-@axiom
-Sub.val : (A : Type) -> (s : Set A) -> Sub A s -> A;
+@rec(Sub)
+Sub.rec :
+	(A : Type) -> (s : Set A) ->
+	(motive : Sub A s -> Type) ->
+	(case_intro : (a : A) -> (h : s a) -> motive (Sub.intro A s a h)) ->
+	(target : Sub A s) ->
+	motive target;
+
+Sub.val : (A : Type) -> (s : Set A) -> Sub A s -> A :=
+	(A : Type) => (s : Set A) => (x : Sub A s) =>
+	Sub.rec A s
+		((t : Sub A s) => A)
+		((a : A) => (h : s a) => a)
+		x;
+
+// This one has to wait for iota: the proof of `s a` is right there in the
+// constructor, but reaching it means `Sub.val A s (Sub.intro A s a h)`
+// reducing to `a`, and Sub.rec does not compute yet.
 @axiom
 Sub.property : (A : Type) -> (s : Set A) -> (x : Sub A s) ->
 	s (Sub.val A s x);

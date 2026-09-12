@@ -97,10 +97,27 @@ Not.elim : (a : Prop) -> Not a -> a -> False :=
 Prop.And : Prop -> Prop -> Prop;
 @intro(Prop.And)
 Prop.And.intro : (a : Prop) -> (b : Prop) -> a -> b -> Prop.And a b;
-@axiom
-Prop.And.left : (a : Prop) -> (b : Prop) -> Prop.And a b -> a;
-@axiom
-Prop.And.right : (a : Prop) -> (b : Prop) -> Prop.And a b -> b;
+@rec(Prop.And)
+Prop.And.rec_prop :
+	(a : Prop) -> (b : Prop) ->
+	(motive : Prop.And a b -> Prop) ->
+	(case_intro : (x : a) -> (y : b) -> motive (Prop.And.intro a b x y)) ->
+	(target : Prop.And a b) ->
+	motive target;
+
+Prop.And.left : (a : Prop) -> (b : Prop) -> Prop.And a b -> a :=
+	(a : Prop) => (b : Prop) => (h : Prop.And a b) =>
+	Prop.And.rec_prop a b
+		((t : Prop.And a b) => a)
+		((x : a) => (y : b) => x)
+		h;
+
+Prop.And.right : (a : Prop) -> (b : Prop) -> Prop.And a b -> b :=
+	(a : Prop) => (b : Prop) => (h : Prop.And a b) =>
+	Prop.And.rec_prop a b
+		((t : Prop.And a b) => b)
+		((x : a) => (y : b) => y)
+		h;
 
 @inductive
 Prop.Or : Prop -> Prop -> Prop;
@@ -108,8 +125,25 @@ Prop.Or : Prop -> Prop -> Prop;
 Prop.Or.inl : (a : Prop) -> (b : Prop) -> a -> Prop.Or a b;
 @intro(Prop.Or)
 Prop.Or.inr : (a : Prop) -> (b : Prop) -> b -> Prop.Or a b;
-@axiom
-Prop.Or.elim : (a : Prop) -> (b : Prop) -> (c : Prop) -> Prop.Or a b -> (a -> c) -> (b -> c) -> c;
+// Or has two constructors, so it may only eliminate into Prop - which is all
+// elim ever wanted.
+@rec(Prop.Or)
+Prop.Or.rec_prop :
+	(a : Prop) -> (b : Prop) ->
+	(motive : Prop.Or a b -> Prop) ->
+	(case_inl : (x : a) -> motive (Prop.Or.inl a b x)) ->
+	(case_inr : (y : b) -> motive (Prop.Or.inr a b y)) ->
+	(target : Prop.Or a b) ->
+	motive target;
+
+Prop.Or.elim : (a : Prop) -> (b : Prop) -> (c : Prop) -> Prop.Or a b -> (a -> c) -> (b -> c) -> c :=
+	(a : Prop) => (b : Prop) => (c : Prop) =>
+	(h : Prop.Or a b) => (l : a -> c) => (r : b -> c) =>
+	Prop.Or.rec_prop a b
+		((t : Prop.Or a b) => c)
+		((x : a) => l x)
+		((y : b) => r y)
+		h;
 
 @inductive
 Exists : (A : Type) -> (P : A -> Prop) -> Prop;
