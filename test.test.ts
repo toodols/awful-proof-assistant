@@ -17,9 +17,15 @@ test("pattern matching", async () => {
 	const statements = await expand(
 		"main.txt",
 		async (path) => `
-		@axiom
-		left : ( A : Type ) -> A -> A -> A;
-		left A a b : A := a;
+		@inductive
+		N : Type;
+		@intro(N)
+		N.z : N;
+		@rec(N)
+		N.rec : (motive : N -> Type) -> (case_z : motive N.z) ->
+			(target : N) -> motive target;
+		@iota(N)
+		N.rec motive case_z N.z : motive N.z := case_z;
 		`,
 	);
 	const globals = new_globals();
@@ -45,13 +51,21 @@ test("pattern variables are not confused with each other", async () => {
 	const statements = await expand(
 		"main.txt",
 		async () => `
-		@axiom
-		f : ( A : Type ) -> ( B : Type ) -> A -> B;
-		f A B a : B := a;
+		@inductive
+		Lst : (A : Type) -> Type;
+		@intro(Lst)
+		Lst.nil : (A : Type) -> Lst A;
+		@rec(Lst)
+		Lst.rec : (A : Type) -> (motive : Lst A -> Type) ->
+			(case_nil : motive (Lst.nil A)) ->
+			(target : Lst A) -> motive target;
+		@iota(Lst)
+		Lst.rec A motive case_nil (Lst.nil B) : motive (Lst.nil A) := case_nil;
 		`,
 	);
 	const globals = new_globals();
-	// `a : A` is not a `B`, even though A and B are both opaque values of Type
+	// the rule is about `Lst B`, which is not the `Lst A` the recursor takes,
+	// even though A and B are both opaque values of Type
 	expect(() => check_program(globals, statements)).toThrow();
 });
 
@@ -274,7 +288,8 @@ test("large elimination is restricted", async () => {
 
 // The point of the markers: the trust base is greppable, and it matches what
 // the exporter reports. @inductive and @intro still export as axioms, since
-// nothing generates recursors yet, so every marker is one exported axiom. A
+// nothing generates recursors yet, so every marked declaration is one exported
+// axiom - the @iota rules mark rules of those declarations, not new ones. A
 // proof using SORRY would add an axiom with no declaration of its own to mark,
 // which is the one hole in this.
 test("every axiom in the export is marked in the source", async () => {
@@ -283,7 +298,10 @@ test("every axiom in the export is marked in the source", async () => {
 		async (path) => await Bun.file(path).text(),
 	);
 	const result = export_to_lean(statements);
-	const marked = statements.filter((s) => s.directives.length > 0);
+	// an @iota rule marks a rule of a declaration that is already counted
+	const marked = statements.filter(
+		(s) => s.directives.length > 0 && s.pat.type === "ident",
+	);
 	expect(marked.length).toBe(result.axioms);
 
 	// of those, the ones still taken purely on trust
@@ -329,6 +347,13 @@ test("recursors compute", async () => {
 			(case_succ : (n : Nat) -> motive n -> motive (Nat.succ n)) ->
 			(target : Nat) ->
 			motive target;
+		@iota(Nat)
+		Nat.rec motive case_zero case_succ Nat.zero :
+			motive Nat.zero := case_zero;
+		@iota(Nat)
+		Nat.rec motive case_zero case_succ (Nat.succ n) :
+			motive (Nat.succ n) :=
+			case_succ n (Nat.rec motive case_zero case_succ n);
 		@axiom
 		Eq : ( A : Type ) -> ( a : A ) -> ( b : A ) -> Prop;
 		@axiom
@@ -557,4 +582,265 @@ test("SORRY is instantiated at the universe of what it proves", async () => {
 	// `EC <SORRY> 0` is Sort 0, ie Prop; `EC <SORRY> 1` is Sort 1, ie Type
 	expect(lines.some((l) => l.endsWith(`#EC ${sorry} 0`))).toBe(true);
 	expect(lines.some((l) => l.endsWith(`#EC ${sorry} 1`))).toBe(true);
+});
+
+// ---------------------------------------------------------------------------
+// @iota
+//
+// A recursor's iota rules are what it does on each constructor, and nothing
+// else may have them: every other definition is written in terms of a recursor.
+// ---------------------------------------------------------------------------
+
+// every iota test needs a type to eliminate
+const NAT = `
+	@inductive
+	Eq : (A : Type) -> A -> A -> Prop;
+	@intro(Eq)
+	Eq.refl : (A : Type) -> (x : A) -> Eq A x x;
+	@inductive
+	N : Type;
+	@intro(N)
+	N.z : N;
+	@intro(N)
+	N.s : N -> N;
+`;
+
+const NREC = `
+	@rec(N)
+	N.rec : (motive : N -> Type) -> (case_z : motive N.z) ->
+		(case_s : (n : N) -> motive n -> motive (N.s n)) ->
+		(target : N) -> motive target;
+`;
+
+const checks = async (src: string) => {
+	const statements = await expand("main.txt", async () => NAT + src);
+	return () => check_program(new_globals(), statements);
+};
+
+test("a recursor reduces by its iota rules", async () => {
+	expect(
+		await checks(
+			NREC +
+				`
+		@iota(N)
+		N.rec motive case_z case_s N.z : motive N.z := case_z;
+		@iota(N)
+		N.rec motive case_z case_s (N.s n) : motive (N.s n) :=
+			case_s n (N.rec motive case_z case_s n);
+
+		N.double : N -> N := (n : N) =>
+			N.rec ((t : N) => N) N.z ((m : N) => (ih : N) => N.s (N.s ih)) n;
+		// only reduction can close this
+		four : Eq N (N.double (N.s (N.s N.z))) (N.s (N.s (N.s (N.s N.z)))) :=
+			Eq.refl N (N.s (N.s (N.s (N.s N.z))));
+		`,
+		),
+	).not.toThrow();
+});
+
+test("an iota rule may name a parameter twice over", async () => {
+	expect(
+		await checks(`
+		@inductive
+		Lst : (A : Type) -> Type;
+		@intro(Lst)
+		Lst.nil : (A : Type) -> Lst A;
+		@intro(Lst)
+		Lst.cons : (A : Type) -> A -> Lst A -> Lst A;
+		@rec(Lst)
+		Lst.rec : (A : Type) -> (motive : Lst A -> Type) ->
+			(case_nil : motive (Lst.nil A)) ->
+			(case_cons : (x : A) -> (xs : Lst A) -> motive xs ->
+				motive (Lst.cons A x xs)) ->
+			(target : Lst A) -> motive target;
+		@iota(Lst)
+		Lst.rec A motive case_nil case_cons (Lst.nil A) :
+			motive (Lst.nil A) := case_nil;
+		@iota(Lst)
+		Lst.rec A motive case_nil case_cons (Lst.cons A x xs) :
+			motive (Lst.cons A x xs) :=
+			case_cons x xs (Lst.rec A motive case_nil case_cons xs);
+
+		Lst.len : (A : Type) -> Lst A -> N := (A : Type) => (l : Lst A) =>
+			Lst.rec A ((t : Lst A) => N) N.z
+				((x : A) => (xs : Lst A) => (ih : N) => N.s ih) l;
+		two : Eq N (Lst.len N (Lst.cons N N.z (Lst.cons N N.z (Lst.nil N))))
+			(N.s (N.s N.z)) := Eq.refl N (N.s (N.s N.z));
+		`),
+	).not.toThrow();
+});
+
+// A recursor with no iota rules at all is the old arrangement, where reduction
+// knows what a recursor does. One given some of them has to be given the rest.
+test("a recursor may have no iota rules", async () => {
+	expect(await checks(NREC)).not.toThrow();
+});
+
+test("iota rules have to cover every constructor", async () => {
+	expect(
+		await checks(
+			NREC +
+				`
+		@iota(N)
+		N.rec motive case_z case_s N.z : motive N.z := case_z;
+		`,
+		),
+	).toThrow(/no rule for every constructor/);
+});
+
+test("two iota rules may not match the same constructor", async () => {
+	expect(
+		await checks(
+			NREC +
+				`
+		@iota(N)
+		N.rec motive case_z case_s N.z : motive N.z := case_z;
+		@iota(N)
+		N.rec motive case_z case_s (N.s n) : motive (N.s n) :=
+			case_s n (N.rec motive case_z case_s n);
+		@iota(N)
+		N.rec motive case_z case_s (N.s n) : motive (N.s n) :=
+			case_s n (N.rec motive case_z case_s n);
+		`,
+		),
+	).toThrow(/2 rules match N.s/);
+});
+
+// The recursor already fixed what it gives at a pattern. A rule that got to
+// claim some other type would reduce to a term of the wrong one.
+test("an iota rule may not claim a type of its own", async () => {
+	expect(
+		await checks(
+			NREC +
+				`
+		@iota(N)
+		N.rec motive case_z case_s N.z : Prop := N;
+		`,
+		),
+	).toThrow(/the rule claims Prop/);
+});
+
+// An indexed family's recursor has to match its index alongside its target,
+// which is two patterns at once and not supported yet. Its recursor is also one
+// reduction cannot fire on its own, so such a type has no iota at all today.
+test("an indexed recursor cannot state its iota rules yet", async () => {
+	expect(
+		await checks(`
+		@inductive
+		D : N -> Type;
+		@intro(D)
+		D.z : D N.z;
+		@intro(D)
+		D.s : (n : N) -> D n -> D (N.s n);
+		@rec(D)
+		D.rec : (motive : (n : N) -> D n -> Type) ->
+			(case_z : motive N.z D.z) ->
+			(case_s : (n : N) -> (d : D n) -> motive n d ->
+				motive (N.s n) (D.s n d)) ->
+			(n : N) -> (target : D n) -> motive n target;
+		@iota(D)
+		D.rec motive case_z case_s N.z D.z : motive N.z D.z := case_z;
+		`),
+	).toThrow(/match on 2 arguments at once/);
+});
+
+// A proof of Or must not be able to say which side it came from, which @rec
+// catches before there are any rules to write
+test("a Prop with two constructors has no recursor into Type", async () => {
+	expect(
+		await checks(`
+		@inductive
+		Or : Prop -> Prop -> Prop;
+		@intro(Or)
+		Or.inl : (a : Prop) -> (b : Prop) -> a -> Or a b;
+		@intro(Or)
+		Or.inr : (a : Prop) -> (b : Prop) -> b -> Or a b;
+		@rec(Or)
+		Or.rec : (a : Prop) -> (b : Prop) -> (motive : Or a b -> Type) ->
+			(case_inl : (x : a) -> motive (Or.inl a b x)) ->
+			(case_inr : (y : b) -> motive (Or.inr a b y)) ->
+			(target : Or a b) -> motive target;
+		`),
+	).toThrow(/may only eliminate into Prop/);
+});
+
+// @iota marks a rule, never a declaration
+test("a declaration may not be marked @iota", async () => {
+	expect(
+		await checks(`
+		@iota
+		f : N -> N;
+		`),
+	).toThrow(/@iota marks a rule/);
+});
+
+// iota is how an eliminator reduces, so the rules belong to one: every other
+// definition is written out in terms of a recursor
+test("only a recursor has iota rules", async () => {
+	expect(
+		await checks(`
+		@axiom
+		f : N -> N;
+		@iota(N)
+		f N.z : N := N.z;
+		`),
+	).toThrow(/'f' is not the recursor for N/);
+});
+
+// A rule names the type it matches on, the way @intro(Nat) names the type it
+// builds
+test("an iota rule has to name the type it matches on", async () => {
+	expect(
+		await checks(
+			NREC +
+				`
+		@iota
+		N.rec motive case_z case_s N.z : motive N.z := case_z;
+		`,
+		),
+	).toThrow(/@iota needs the type the rule matches on/);
+});
+
+test("an iota rule may not name a type it does not match on", async () => {
+	expect(
+		await checks(`
+		@inductive
+		Lst : (A : Type) -> Type;
+		@intro(Lst)
+		Lst.nil : (A : Type) -> Lst A;
+		@rec(N)
+		N.rec : (motive : N -> Type) -> (case_z : motive N.z) ->
+			(case_s : (n : N) -> motive n -> motive (N.s n)) ->
+			(target : N) -> motive target;
+		@iota(Lst)
+		N.rec motive case_z case_s N.z : motive N.z := case_z;
+		`),
+	).toThrow(/is not the recursor for Lst/);
+});
+
+test("a rule cannot match a constructor of another type", async () => {
+	expect(
+		await checks(`
+		@inductive
+		M : Type;
+		@intro(M)
+		M.t : M;
+		@rec(M)
+		M.rec : (motive : M -> Type) -> (case_t : motive M.t) ->
+			(target : M) -> motive target;
+		@iota(M)
+		M.rec motive case_t N.z : motive M.t := case_t;
+		`),
+		// the pattern is typed against the recursor, which is what catches it
+	).toThrow(/expected type N to be a subtype of M/);
+});
+
+test("a declaration gets exactly one marker", async () => {
+	expect(
+		await checks(`
+		@axiom
+		@iota
+		f : N -> N;
+		`),
+	).toThrow(/but a declaration gets exactly one marker/);
 });

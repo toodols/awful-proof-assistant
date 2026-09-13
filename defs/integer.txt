@@ -12,6 +12,13 @@ Int.rec :
     (target : Int) ->
     motive target;
 
+@iota(Int)
+Int.rec motive case_nat case_neg_succ (Int.nat n) :
+	motive (Int.nat n) := case_nat n;
+@iota(Int)
+Int.rec motive case_nat case_neg_succ (Int.neg_succ n) :
+	motive (Int.neg_succ n) := case_neg_succ n;
+
 Int.rec_prop :
     (motive : Int -> Prop) ->
     (case_nat : (n : Nat) -> motive (Int.nat n)) ->

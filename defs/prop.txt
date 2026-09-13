@@ -8,6 +8,9 @@ True.rec :
 	(case_triv : motive True.triv) ->
 	(target : True) ->
 	motive target;
+
+@iota(True)
+True.rec motive case_triv True.triv : motive True.triv := case_triv;
 @inductive
 False : Prop;
 // no constructors, so no cases: from a False, anything. Eliminating a Prop
@@ -18,6 +21,8 @@ False.rec :
 	(motive : False -> Type) ->
 	(target : False) ->
 	motive target;
+
+
 
 @inductive
 Lift : Prop -> Type;
@@ -31,6 +36,10 @@ Lift.rec :
 	(target : Lift p) ->
 	motive target;
 
+@iota(Lift)
+Lift.rec p motive case_intro (Lift.intro p x) :
+	motive (Lift.intro p x) := case_intro x;
+
 // Lift p is a Type, so eliminating it into Prop is small elimination and needs
 // no permission. Unlike every other rec_prop here, this one is stated rather
 // than derived: deriving one goes through Lift, which cannot work for Lift.
@@ -41,6 +50,10 @@ Lift.rec_prop :
 	(case_intro : (x : p) -> motive (Lift.intro p x)) ->
 	(target : Lift p) ->
 	motive target;
+
+@iota(Lift)
+Lift.rec_prop p motive case_intro (Lift.intro p x) :
+	motive (Lift.intro p x) := case_intro x;
 
 Lift.elim : (p : Prop) -> Lift p -> p :=
 	(p : Prop) => (target : Lift p) =>
@@ -71,6 +84,10 @@ Prop.Iff.rec :
 		motive (Prop.Iff.intro a b mp mpr)) ->
 	(target : Prop.Iff a b) ->
 	motive target;
+
+@iota(Prop.Iff)
+Prop.Iff.rec a b motive case_intro (Prop.Iff.intro a b mp mpr) :
+	motive (Prop.Iff.intro a b mp mpr) := case_intro mp mpr;
 
 Prop.Iff.rec_prop :
 	(a : Prop) -> (b : Prop) ->
@@ -108,48 +125,39 @@ Prop.Iff.mpr : (a : Prop) -> (b : Prop) -> Prop.Iff a b -> b -> a :=
 		((mp : a -> b) => (mpr : b -> a) => mpr)
 		h;
 
+Prop.Not : Prop -> Prop := (a : Prop) => a -> False;
+// Not.elim (h1 : a) -> (h2 : Not a) -> False simply by applying h2(h1)
+
 @inductive
-Not : Prop -> Prop;
-@intro(Not)
-Not.intro : (a : Prop) -> (a -> False) -> Not a;
-@rec(Not)
-Not.rec :
-	(a : Prop) ->
-	(motive : Not a -> Type) ->
-	(case_intro : (proof : a -> False) -> motive (Not.intro a proof)) ->
-	(evidence : Not a) ->
-	motive evidence;
+Decidable : (a : Prop) -> Type;
 
-// Not.rec eliminates into Type; Lift it to eliminate into Prop, the same way
-// Nat.rec_prop and Eq.rec_prop do.
-Not.rec_prop :
-	(a : Prop) ->
-	(motive : Not a -> Prop) ->
-	(case_intro : (proof : a -> False) -> motive (Not.intro a proof)) ->
-	(evidence : Not a) ->
-	motive evidence :=
-	(a : Prop) =>
-	(motive : Not a -> Prop) =>
-	(case_intro : (proof : a -> False) -> motive (Not.intro a proof)) =>
-	(evidence : Not a) =>
-	Lift.elim
-		(motive evidence)
-		(Not.rec
-			a
-			((e : Not a) => Lift (motive e))
-			((proof : a -> False) =>
-				Lift.intro
-					(motive (Not.intro a proof))
-					(case_intro proof))
-			evidence);
+@intro(Decidable)
+Decidable.yes : (a : Prop) -> (h : a) -> Decidable a;
 
-Not.elim : (a : Prop) -> Not a -> a -> False :=
-	(a : Prop) => (p : Not a) =>
-	Not.rec_prop
-		a
-		(Not a => (a -> False))
-		((proof : a -> False) => proof)
-		p;
+@intro(Decidable)
+Decidable.no : (a : Prop) -> (h : Prop.Not a) -> Decidable a;
+
+// `a` is a parameter, not an index: both constructors take it first and hand it
+// straight back, so it comes before the motive and the motive does not mention
+// it.
+@rec(Decidable)
+Decidable.rec :
+	(a : Prop) ->
+	(motive : Decidable a -> Type) ->
+	(case_yes : (h : a) -> motive (Decidable.yes a h)) ->
+	(case_no : (h : Prop.Not a) -> motive (Decidable.no a h)) ->
+	(target : Decidable a) ->
+	motive target;
+
+@iota(Decidable)
+Decidable.rec a motive case_yes case_no (Decidable.yes a h) :
+	motive (Decidable.yes a h) := case_yes h;
+@iota(Decidable)
+Decidable.rec a motive case_yes case_no (Decidable.no a h) :
+	motive (Decidable.no a h) := case_no h;
+
+@axiom
+classical : (a : Prop) -> Decidable a;
 
 @inductive
 Prop.And : Prop -> Prop -> Prop;
@@ -162,6 +170,10 @@ Prop.And.rec :
 	(case_intro : (x : a) -> (y : b) -> motive (Prop.And.intro a b x y)) ->
 	(target : Prop.And a b) ->
 	motive target;
+
+@iota(Prop.And)
+Prop.And.rec a b motive case_intro (Prop.And.intro a b x y) :
+	motive (Prop.And.intro a b x y) := case_intro x y;
 
 Prop.And.rec_prop :
 	(a : Prop) -> (b : Prop) ->
@@ -214,6 +226,13 @@ Prop.Or.rec_prop :
 	(target : Prop.Or a b) ->
 	motive target;
 
+@iota(Prop.Or)
+Prop.Or.rec_prop a b motive case_inl case_inr (Prop.Or.inl a b x) :
+	motive (Prop.Or.inl a b x) := case_inl x;
+@iota(Prop.Or)
+Prop.Or.rec_prop a b motive case_inl case_inr (Prop.Or.inr a b y) :
+	motive (Prop.Or.inr a b y) := case_inr y;
+
 Prop.Or.elim : (a : Prop) -> (b : Prop) -> (c : Prop) -> Prop.Or a b -> (a -> c) -> (b -> c) -> c :=
 	(a : Prop) => (b : Prop) => (c : Prop) =>
 	(h : Prop.Or a b) => (l : a -> c) => (r : b -> c) =>
@@ -235,6 +254,10 @@ Exists.rec_prop :
 	(target : Exists A P) ->
 	motive target;
 
+@iota(Exists)
+Exists.rec_prop A P motive case_intro (Exists.intro A P a h) :
+	motive (Exists.intro A P a h) := case_intro a h;
+
 Exists.elim : (A : Type) -> (P : A -> Prop) -> (C : Prop) ->
 	Exists A P -> ((a : A) -> P a -> C) -> C :=
 	(A : Type) => (P : A -> Prop) => (C : Prop) =>
@@ -255,6 +278,10 @@ ForAll.rec :
 	(case_intro : (f : (a : A) -> P a) -> motive (ForAll.intro A P f)) ->
 	(target : ForAll A P) ->
 	motive target;
+
+@iota(ForAll)
+ForAll.rec A P motive case_intro (ForAll.intro A P f) :
+	motive (ForAll.intro A P f) := case_intro f;
 
 ForAll.rec_prop :
 	(A : Type) -> (P : A -> Prop) ->

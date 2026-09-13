@@ -17,6 +17,14 @@ List.rec :
 	(target : List El) ->
 	motive target;
 
+@iota(List)
+List.rec El motive case_nil case_cons (List.nil El) :
+	motive (List.nil El) := case_nil;
+@iota(List)
+List.rec El motive case_nil case_cons (List.cons El head tail) :
+	motive (List.cons El head tail) :=
+	case_cons head tail (List.rec El motive case_nil case_cons tail);
+
 List.Len : (El : Type) -> (list : List El) -> Nat :=
 	(El : Type) => (list : List El) =>
 	List.rec El

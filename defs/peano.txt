@@ -14,6 +14,12 @@ Nat.rec :
 	(target : Nat) ->
 	motive target;
 
+@iota(Nat)
+Nat.rec motive case_zero case_succ Nat.zero : motive Nat.zero := case_zero;
+@iota(Nat)
+Nat.rec motive case_zero case_succ (Nat.succ n) : motive (Nat.succ n) :=
+	case_succ n (Nat.rec motive case_zero case_succ n);
+
 Nat.rec_prop :
 	(motive : Nat -> Prop) ->
 	(case_zero : motive Nat.zero) ->
@@ -220,3 +226,16 @@ Nat.double_inj : (a : Nat) -> (b : Nat) ->
 			(b : Nat) -> Eq Nat (Nat.double a) (Nat.double b) -> Eq Nat a b)
 		Nat.double_inj.zero
 		Nat.double_inj.succ;
+
+Nat.Mul : (a : Nat) -> (b : Nat) -> Nat := (a : Nat) => (b : Nat) =>
+	Nat.rec
+		((n : Nat) => Nat)
+		// case_zero: a * 0 = 0
+		Nat.zero
+		// case_succ: a * succ(b) = succ(a + ih), ih = a * b
+		((n : Nat) => (ih : Nat) => Nat.succ (Nat.Add a ih))
+		b;
+
+// forall a : Nat. a * 0 = 0
+Nat.Mul.mul_zero : (a : Nat) -> Eq Nat (Nat.Mul a Nat.zero) Nat.zero :=
+	(a : Nat) => Eq.refl Nat Nat.zero;

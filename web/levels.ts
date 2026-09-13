@@ -8,7 +8,6 @@ import equality1 from "./levels/equality1.txt";
 import equality2 from "./levels/equality2.txt";
 import sandbox from "./levels/sandbox.txt";
 import family from "./levels/family.txt";
-import lol from "./levels/lol.txt";
 
 export const levels = [
 	aliceandbob1,

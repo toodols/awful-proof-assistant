@@ -14,6 +14,10 @@ Eq.rec :
     (evidence : Eq A a target) ->
     motive target evidence;
 
+@iota(Eq)
+Eq.rec A a motive case_refl a (Eq.refl A a) :
+	motive a (Eq.refl A a) := case_refl;
+
 Eq.rec_prop :
 	(A : Type) ->
 	(a : A) ->

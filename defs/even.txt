@@ -1,0 +1,24 @@
+@require "prop.txt"
+@require "peano.txt"
+
+Nat.Even : Nat -> Prop :=
+	(n : Nat) =>
+		Nat.rec (Nat => Prop)
+			// case zero: Yes, 0 is even
+			True
+			// case succ: Even succ(n) = Prop.Not ih, ih = Even n
+			((n : Nat) => (ih: Prop) => Prop.Not ih) n;
+
+// Proof by obvious
+Nat.Even.zero : Nat.Even Nat.zero := True.triv;
+
+Nat.Even.succ_succ_n : (n : Nat) -> Nat.Even n -> Nat.Even (Nat.succ (Nat.succ n)) :=
+	(n : Nat) => (h : Nat.Even n) =>
+	// Even (S(S(n))) definitionally reduces to ((Nat.Even n) -> False) -> False
+	// hn : Even n -> False
+	// Applying h to hn we get False back
+	(hn : Nat.Even n -> False) => hn h;
+
+// A bijection between the set of even numbers and the set of natural numbers
+nat_set : Set Nat := Set.Univ Nat;
+even_set : Set Nat := (n : Nat) => Nat.Even n;

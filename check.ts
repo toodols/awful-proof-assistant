@@ -5,26 +5,25 @@ type Globals = {
 	[k: string]: {
 		ty: Expr;
 		def: Expr | null;
-		rules: { pat: Expr; ty: Expr; def: Expr }[];
+		// A rule: the pattern, the type the declaration gives at that pattern,
+		// the body, which opaque value each pattern variable was given so that
+		// matching can substitute into the body, and the inductive its @iota
+		// named, if it was marked. Every rule reduces; the marked ones are the
+		// ones the checker has something to say about.
+		rules: {
+			pat: Expr;
+			ty: Expr;
+			def: Expr;
+			var_ids: (number | undefined)[];
+			iota: string | null;
+		}[];
+		// whether the rules marked @iota cover the type they match on yet
+		iota_complete?: boolean;
 		// set by @inductive; constructors are filled in by @intro(...)
 		inductive?: { constructors: string[] };
-		// set by @rec(X): everything iota needs to fire
-		recursor?: {
-			ind: string;
-			num_params: number;
-			num_indices: number;
-			constructors: string[];
-			// how many fields and which of them recurse, per constructor.
-			// `reducible` is false when the induction hypotheses cannot be
-			// rebuilt from the term alone, which is when a recursive field
-			// sits behind an arrow, or the type has indices: both need the
-			// field's *type*, and reduction only has the term.
-			fields: {
-				total: number;
-				recursive: number[];
-				reducible: boolean;
-			}[];
-		};
+		// set by @rec(X): which type this eliminates. Reduction never reads it
+		// - it is only how @iota(X) knows whose rules these are meant to be.
+		rec?: string;
 	};
 };
 const error_ty = { type: "error" as const, tokens: [] as Token[] };
@@ -119,47 +118,27 @@ export function print_expr(expr: Expr): string {
 	}
 }
 
-// Substitute refs in an expression with known values.
-// `ref_vals` holds one opaque value per enclosing binder, innermost last.
-function subst_refs(expr: Expr, ref_vals: Expr[]): Expr {
-	// console.log(
-	// 	`Substituting ${print_expr(expr)} with ${ref_vals.map((e, i) => `${ref_vals.length - i}: ${print_expr(e)}`).join(", ")}`,
-	// );
-	if (expr.type === "ref") {
-		const v = ref_vals[ref_vals.length - expr.index];
-		if (v === undefined) {
-			throw new Error(`Could not find ref ${expr.index}`);
-		}
-		return v;
-	} else if (expr.type === "application") {
+// The term a pattern spells out: its variables stand for the opaque values
+// destructure gave them, and everything else is itself.
+function pattern_term(
+	pat: Expr,
+	names: string[],
+	destructured: Record<string, Expr>,
+	bound: Expr,
+): Expr {
+	if (pat.type === "def") {
+		return destructured[names[pat.index]!] ?? bound;
+	} else if (pat.type === "global") {
+		return pat;
+	} else if (pat.type === "application") {
 		return {
 			type: "application",
-			fun: subst_refs(expr.fun, ref_vals),
-			value: subst_refs(expr.value, ref_vals),
+			fun: pattern_term(pat.fun, names, destructured, bound),
+			value: pattern_term(pat.value, names, destructured, bound),
 			tokens: [],
 		};
-	} else if (expr.type === "pi") {
-		const head = subst_refs(expr.head, ref_vals);
-		ref_vals.push(opaque(head));
-
-		const val: Expr = {
-			type: "pi",
-			head: head,
-			tail: subst_refs(expr.tail, ref_vals),
-			tokens: [],
-		};
-		ref_vals.pop();
-		return val;
-	} else if (expr.type === "lambda") {
-		return {
-			type: "lambda",
-			head: subst_refs(expr.head, ref_vals),
-			tail: subst_refs(expr.tail, ref_vals),
-			tokens: [],
-		};
-	} else {
-		return expr;
 	}
+	return bound;
 }
 
 // destructures a pattern against a type while storing name to their types
@@ -170,12 +149,27 @@ function destructure(
 	ty: Expr,
 	names: string[],
 	destructured: Record<string, Expr>,
-	ref_vals: Expr[] = [],
 	// the opaque value this position was already given, if the caller made one
 	value?: Expr,
 ): Expr {
 	if (pat.type === "def") {
-		destructured[names[pat.index]!] = value ?? opaque(ty);
+		const name = names[pat.index]!;
+		const seen = destructured[name];
+		if (seen !== undefined) {
+			// The variable already stands for something, so this occurrence has
+			// to stand for the same thing. That is what lets a clause name an
+			// inductive's parameters twice, as
+			// `Lst.rec A motive nil cons (Lst.cons A x xs)` has to.
+			if (!member_of(globals, seen, ty)) {
+				throw new Error(
+					`the pattern variable '${name}' is used at two types: ${print_expr(
+						type_of(globals, seen, {}, []),
+					)} and ${print_expr(ty)}`,
+				);
+			}
+			return ty;
+		}
+		destructured[name] = value ?? opaque(ty);
 		return ty;
 	} else if (pat.type === "application") {
 		// pat.fun = ((A => B => C) b) c
@@ -185,7 +179,6 @@ function destructure(
 			{ type: "any", tokens: [] },
 			names,
 			destructured,
-			ref_vals,
 		) as Expr & { type: "pi" };
 
 		// fun_ty: B -> C;
@@ -194,24 +187,25 @@ function destructure(
 		const head = fun_ty.head;
 		// the argument and every ref to it in the tail are the same value
 		const bound = opaque(head);
-		ref_vals.push(bound);
-		const tail = reduce_simp_app(globals, subst_refs(fun_ty.tail, ref_vals));
+
+		// b : B
+		destructure(globals, pat.value, head, names, destructured, bound);
+
+		// What the rest of the type gets to see here. A variable stands for an
+		// arbitrary value of the domain, but a constructor pattern stands for
+		// itself, so that a clause on `N.z` is given `motive N.z` and not
+		// `motive <some N>`. Substituted the way an application is, so that the
+		// argument actually reaches the binders that mention it.
+		const arg = pattern_term(pat.value, names, destructured, bound);
+		const tail = reduce_simp_app(
+			globals,
+			app_subst_new_refs(fun_ty.tail, arg),
+		);
 		if (!is_subtype(globals, tail, ty)) {
 			throw new Error(
 				`expected type ${print_expr(tail)} to be a subtype of ${print_expr(ty)}`,
 			);
 		}
-
-		// b : B
-		destructure(
-			globals,
-			pat.value,
-			head,
-			names,
-			destructured,
-			ref_vals,
-			bound,
-		);
 		// DO NOT POP REFVALS
 		return tail;
 	} else if (pat.type === "global") {
@@ -444,55 +438,125 @@ function app_subst_new_refs(tail: Expr, value: Expr, depth = 1): Expr {
 // for `c`, applied to the constructor's fields and then to an induction
 // hypothesis for each field that recurses. Every step eats one constructor, so
 // this terminates.
+// ---------------------------------------------------------------------------
+// Iota
+//
+// A recursor's iota rules are what it does on each constructor, and reduction
+// fires them. Matching is the primitive here, so a recursor is an ordinary
+// declaration rather than something reduction knows about, and a rule is the
+// only place a pattern may appear: every other definition is written in terms
+// of a recursor.
+//
+// Three things keep a pile of rules from being an axiom in disguise, and all
+// three are checked in check_iota_rules: the rules split one argument and cover
+// its type exactly once each, every rule claims the type the recursor already
+// gives at that pattern, and every recursive call descends to a field of the
+// constructor it matched.
+// ---------------------------------------------------------------------------
+
+// Replaces pattern variables with the terms matched against them. `depth` is
+// how many binders have been crossed, which is how far a substituted term's own
+// free refs have to move to still point at the same binders.
+function subst_opaques(expr: Expr, sub: Map<number, Expr>, depth = 0): Expr {
+	if (expr.type === "value_with_type") {
+		const value = sub.get(expr.id);
+		if (value !== undefined) {
+			return depth === 0 ? value : inc_refs_in_expr(value, depth);
+		}
+		return {
+			type: "value_with_type",
+			id: expr.id,
+			ty: subst_opaques(expr.ty, sub, depth),
+			tokens: [],
+		};
+	} else if (expr.type === "application") {
+		return {
+			type: "application",
+			fun: subst_opaques(expr.fun, sub, depth),
+			value: subst_opaques(expr.value, sub, depth),
+			tokens: [],
+		};
+	} else if (expr.type === "lambda" || expr.type === "pi") {
+		// the domain is outside the binder the tail is inside of
+		return {
+			type: expr.type,
+			head: subst_opaques(expr.head, sub, depth),
+			tail: subst_opaques(expr.tail, sub, depth + 1),
+			tokens: [],
+		};
+	}
+	return expr;
+}
+
+// Matches one pattern against one argument, growing `binds` from pattern
+// variable to the term it stands for. A variable that occurs twice has to be
+// handed the same term both times, which is what lets a clause name an
+// inductive's parameters on both sides of its pattern, as
+// `List.rec A motive nil cons (List.cons A x xs)` has to.
+function match_pattern(
+	globals: Globals,
+	pat: Expr,
+	term: Expr,
+	binds: Map<number, Expr>,
+): boolean {
+	if (pat.type === "def") {
+		const seen = binds.get(pat.index);
+		if (seen !== undefined) return struct_eq(globals, seen, term);
+		binds.set(pat.index, term);
+		return true;
+	} else if (pat.type === "global") {
+		return term.type === "global" && term.ident === pat.ident;
+	} else if (pat.type === "application") {
+		if (term.type !== "application") return false;
+		return (
+			match_pattern(globals, pat.fun, term.fun, binds) &&
+			match_pattern(globals, pat.value, term.value, binds)
+		);
+	}
+	return struct_eq(globals, pat, term);
+}
+
+// The iota step: a declaration standing in front of a constructor becomes the
+// body of the rule for that constructor. This is the only place reduction on a
+// constructor comes from - the checker knows nothing about recursors here, so
+// every rule fires whether or not a marker asked for it to be checked.
 function reduce_iota(globals: Globals | null, expr: Expr): Expr | null {
 	if (globals === null) return null;
-	const args = spine_args(expr);
 	const head = head_of(expr);
 	if (head.type !== "global") return null;
-	const rec = globals[head.ident]?.recursor;
-	if (rec === undefined) return null;
-
-	const major_at = rec.num_params + 1 + rec.constructors.length + rec.num_indices;
-	if (args.length <= major_at) return null;
-
-	const major = reduce_simp_app(globals, args[major_at]!);
-	const ctor = head_of(major);
-	if (ctor.type !== "global") return null;
-	const which = rec.constructors.indexOf(ctor.ident);
-	if (which === -1) return null;
-
-	const minor = args[rec.num_params + 1 + which]!;
-	const shape = rec.fields[which]!;
-	if (!shape.reducible) return null;
-	const ctor_args = spine_args(major);
-	const fields = ctor_args.slice(rec.num_params);
-	if (fields.length !== shape.total) return null;
-
-	// the recursor applied to everything up to but not including the major
-	const rec_prefix = args.slice(0, rec.num_params + 1 + rec.constructors.length);
-	const hypotheses = shape.recursive.map((i) => {
-		// the field is another X, so recurse on it. No indices to supply:
-		// `reducible` is false for a recursive field of an indexed type,
-		// because the indices live in the field's type and reduction only has
-		// the term.
-		const field = fields[i]!;
-		let out: Expr = head;
-		for (const a of [...rec_prefix, field]) {
+	const decl = globals[head.ident];
+	if (decl === undefined || decl.rules.length === 0) return null;
+	const args = spine_args(expr);
+	for (const rule of decl.rules) {
+		const pat_args = spine_args(rule.pat);
+		if (args.length < pat_args.length) continue;
+		const binds = new Map<number, Expr>();
+		let matched = true;
+		for (let i = 0; i < pat_args.length; i++) {
+			if (!match_pattern(globals, pat_args[i]!, args[i]!, binds)) {
+				matched = false;
+				break;
+			}
+		}
+		if (!matched) continue;
+		const sub = new Map<number, Expr>();
+		for (const [index, value] of binds) {
+			const id = rule.var_ids[index];
+			if (id === undefined) {
+				matched = false;
+				break;
+			}
+			sub.set(id, value);
+		}
+		if (!matched) continue;
+		let out = subst_opaques(rule.def, sub);
+		// whatever the rule was applied to beyond its pattern still applies
+		for (const a of args.slice(pat_args.length)) {
 			out = { type: "application", fun: out, value: a, tokens: [] };
 		}
-		return out;
-	});
-
-	let out = minor;
-	for (const a of [...fields, ...hypotheses]) {
-		out = { type: "application", fun: out, value: a, tokens: [] };
+		return reduce_simp_app(globals, out);
 	}
-	// anything the recursor was applied to beyond the major premise still
-	// applies to the result
-	for (const a of args.slice(major_at + 1)) {
-		out = { type: "application", fun: out, value: a, tokens: [] };
-	}
-	return reduce_simp_app(globals, out);
+	return null;
 }
 
 function reduce_simp_app(globals: Globals | null, expr: Expr): Expr {
@@ -505,15 +569,6 @@ function reduce_simp_app(globals: Globals | null, expr: Expr): Expr {
 		const value = reduce_simp_app(globals, expr.value);
 		if (fun.type === "lambda") {
 			return reduce_simp_app(globals, app_subst_new_refs(fun.tail, value));
-		} else if (fun.type === "value_with_type") {
-			if (fun.ty.type === "pi") {
-				return reduce_simp_app(
-					globals,
-					app_subst_new_refs(fun.ty.tail, value),
-				);
-			} else {
-				throw new Error("idk");
-			}
 		} else {
 			const applied: Expr = {
 				type: "application",
@@ -774,7 +829,13 @@ function check_is_type(
 // What a declaration with no `:=` is allowed to claim to be. Only `@axiom`
 // means "take my word for it"; the other three are claims the checker is meant
 // to verify, and until it can, saying so would be a lie.
-const IMPLEMENTED_DIRECTIVES = ["axiom", "inductive", "intro", "rec"];
+const IMPLEMENTED_DIRECTIVES = [
+	"axiom",
+	"inductive",
+	"intro",
+	"rec",
+	"iota",
+];
 const PLANNED_DIRECTIVES: string[] = [];
 
 
@@ -920,13 +981,16 @@ function check_elimination_allowed(
 	ind_sort: Expr,
 	motive_sort: Expr,
 	num_params: number,
+	// what to call the declaration that is trying to eliminate
+	where = "",
 ) {
 	if (sort_index(ind_sort) !== 0) return;
 	if (sort_index(motive_sort) === 0) return;
+	const at = where === "" ? `@rec(${ind})` : where;
 	const ctors = globals[ind]!.inductive!.constructors;
 	if (ctors.length > 1) {
 		throw new Error(
-			`@rec(${ind}): ${ind} is a Prop with ${ctors.length} constructors, so it may only eliminate into Prop`,
+			`${at}: ${ind} is a Prop with ${ctors.length} constructors, so it may only eliminate into Prop`,
 		);
 	}
 	for (const c of ctors) {
@@ -936,12 +1000,12 @@ function check_elimination_allowed(
 				field_sort = type_of(globals, field, {});
 			} catch {
 				throw new Error(
-					`@rec(${ind}): cannot tell whether '${c}' carries data, so it may only eliminate into Prop`,
+					`${at}: cannot tell whether '${c}' carries data, so it may only eliminate into Prop`,
 				);
 			}
 			if (sort_index(field_sort) !== 0) {
 				throw new Error(
-					`@rec(${ind}): '${c}' carries data, so ${ind} may only eliminate into Prop`,
+					`${at}: '${c}' carries data, so ${ind} may only eliminate into Prop`,
 				);
 			}
 		}
@@ -1022,29 +1086,6 @@ function derive_recursor(
 	);
 }
 
-// Everything iota needs, worked out once when @rec is checked.
-function recursor_info(globals: Globals, ind: string) {
-	const { binders: ind_binders } = open_telescope(globals[ind]!.ty);
-	const num_params = count_params(globals, ind, ind_binders);
-	const num_indices = ind_binders.length - num_params;
-	const constructors = globals[ind]!.inductive!.constructors;
-	const fields = constructors.map((c) => {
-		const { binders } = open_telescope(globals[c]!.ty);
-		const own = binders.slice(num_params);
-		const recursive: number[] = [];
-		let reducible = true;
-		own.forEach((field, i) => {
-			const { binders: inner, body } = open_telescope(field.dom);
-			const head = head_of(body);
-			if (!(head.type === "global" && head.ident === ind)) return;
-			recursive.push(i);
-			if (inner.length > 0 || num_indices > 0) reducible = false;
-		});
-		return { total: own.length, recursive, reducible };
-	});
-	return { ind, num_params, num_indices, constructors, fields };
-}
-
 // @rec(X): the declared type has to be the recursor for X. The motive's sort is
 // read off the declaration rather than derived, since this language has no
 // universe polymorphism and states X.rec and X.rec_prop separately.
@@ -1074,6 +1115,182 @@ function check_recursor(globals: Globals, ind: string, ty: Expr, name: string) {
 			`@rec(${ind}): '${name}' is not the recursor for ${ind}. Expected\n  ${print_expr(derived)}`,
 		);
 	}
+}
+
+// The opaque values a pattern binds, by the id matching substitutes on.
+function pattern_vars(
+	pat: Expr,
+	var_ids: (number | undefined)[],
+	out: Set<number>,
+) {
+	if (pat.type === "def") {
+		const id = var_ids[pat.index];
+		if (id !== undefined) out.add(id);
+	} else if (pat.type === "application") {
+		pattern_vars(pat.fun, var_ids, out);
+		pattern_vars(pat.value, var_ids, out);
+	}
+}
+
+// Every recursive call in a rule has to hand a field of the constructor the
+// rule matched to the argument being matched on. That is what makes the rules a
+// definition rather than an assumption: the matched argument gets structurally
+// smaller at every call, so reduction stops, and `f : (n : Nat) -> False` with
+// `f Nat.zero := f Nat.zero` is rejected instead of handing back False.
+function check_descends(
+	globals: Globals,
+	name: string,
+	body: Expr,
+	pos: number,
+	smaller: Set<number>,
+) {
+	const visit = (expr: Expr) => {
+		if (expr.type === "application") {
+			const head = head_of(expr);
+			const args = spine_args(expr);
+			if (head.type === "global" && head.ident === name) {
+				const arg = pos >= 0 ? args[pos] : undefined;
+				if (arg === undefined) {
+					throw new Error(
+						`@iota '${name}': a recursive call has to pass argument ${
+							pos + 1
+						}, the one the rules match on`,
+					);
+				}
+				if (arg.type !== "value_with_type" || !smaller.has(arg.id)) {
+					throw new Error(
+						`@iota '${name}': a recursive call has to pass a field of the constructor its rule matched as argument ${
+							pos + 1
+						}, so that the recursion gets smaller, but it passes ${print_expr(
+							arg,
+						)}`,
+					);
+				}
+			} else {
+				visit(head);
+			}
+			for (const a of args) visit(a);
+			return;
+		}
+		if (expr.type === "lambda" || expr.type === "pi") {
+			visit(expr.head);
+			visit(expr.tail);
+			return;
+		}
+		if (expr.type === "global" && expr.ident === name) {
+			throw new Error(
+				`@iota '${name}': '${name}' has to be applied to its arguments inside its own rules`,
+			);
+		}
+	};
+	visit(body);
+}
+
+// The rules of one declaration, checked as a group against the type its @iota
+// named, every time one of them arrives. Returns whether they cover that type
+// yet: half a set of rules is an assumption, which check_program rejects at the
+// end rather than here, since the rules arrive one statement at a time.
+function check_iota_rules(globals: Globals, name: string, ind: string): boolean {
+	const fail = (why: string): never => {
+		throw new Error(`@iota '${name}': ${why}`);
+	};
+	const clauses = globals[name]!.rules.map((rule) => ({
+		rule,
+		args: spine_args(rule.pat),
+	}));
+	for (const c of clauses) {
+		if (c.rule.iota !== null && c.rule.iota !== ind) {
+			fail(
+				`its rules are claimed for both ${c.rule.iota} and ${ind}, but they all match on the same argument`,
+			);
+		}
+	}
+	const arity = clauses[0]!.args.length;
+	for (const c of clauses) {
+		if (c.args.length !== arity) {
+			fail("every iota rule has to take the same number of arguments");
+		}
+	}
+
+	// the argument positions that are something other than a plain variable
+	const split = new Set<number>();
+	for (const c of clauses) {
+		c.args.forEach((a, i) => {
+			if (a.type !== "def") split.add(i);
+		});
+	}
+	if (split.size === 0) {
+		if (clauses.length > 1) {
+			fail("no rule matches on anything, so every one of them applies");
+		}
+		check_descends(globals, name, clauses[0]!.rule.def, -1, new Set());
+		return true;
+	}
+	if (split.size > 1) {
+		fail(
+			`the rules match on ${split.size} arguments at once; match one of them and match again inside those rules`,
+		);
+	}
+	const pos = [...split][0]!;
+
+	const ctors = globals[ind]!.inductive!.constructors;
+	const seen = new Map<string, number>();
+	for (const c of clauses) {
+		const head = head_of(c.args[pos]!);
+		if (head.type !== "global") {
+			return fail(
+				`argument ${pos + 1} of a rule has to be a constructor applied to variables, not ${print_expr(
+					c.args[pos]!,
+				)}`,
+			);
+		}
+		if (!ctors.includes(head.ident)) {
+			fail(`${head.ident} is not a constructor of ${ind}`);
+		}
+		seen.set(head.ident, (seen.get(head.ident) ?? 0) + 1);
+	}
+	for (const [c, count] of seen) {
+		// two rules for one constructor would both fire, and nothing says they
+		// agree
+		if (count > 1) fail(`${count} rules match ${c}`);
+	}
+
+	const { binders: ind_binders, body: ind_sort } = open_telescope(
+		globals[ind]!.ty,
+	);
+	const num_params = count_params(globals, ind, ind_binders);
+
+	for (const c of clauses) {
+		// A Prop is irrelevant, so a rule may only look at which constructor a
+		// proof used when there was never more than one to choose from.
+		let motive_sort: Expr | null = null;
+		try {
+			motive_sort = type_of(globals, c.rule.ty, {}, []);
+		} catch {
+			// a rule type we cannot sort cannot be eliminating into anything
+		}
+		if (motive_sort !== null) {
+			check_elimination_allowed(
+				globals,
+				ind,
+				ind_sort,
+				motive_sort,
+				num_params,
+				`@iota '${name}'`,
+			);
+		}
+
+		// the fields are what the recursion is allowed to descend to: the
+		// leading arguments of the pattern are the inductive's parameters,
+		// which are the same size as they were
+		const smaller = new Set<number>();
+		for (const field of spine_args(c.args[pos]!).slice(num_params)) {
+			pattern_vars(field, c.rule.var_ids, smaller);
+		}
+		check_descends(globals, name, c.rule.def, pos, smaller);
+	}
+
+	return ctors.every((c) => seen.has(c));
 }
 
 function occurs(name: string, expr: Expr): boolean {
@@ -1186,6 +1403,10 @@ export type CheckOptions = {
 	// library, where the trust base is the point; off for the web levels, which
 	// are toys whose premises are assumptions by construction.
 	require_markers?: boolean;
+	// called after every statement with how long it took, for progress and
+	// timing. Checking is where the time goes, and a single declaration can
+	// account for most of it.
+	on_checked?: (stmt: Statement, ms: number) => void;
 };
 
 function check_directives(stmt: Statement, opts: CheckOptions) {
@@ -1200,15 +1421,55 @@ function check_directives(stmt: Statement, opts: CheckOptions) {
 			throw new Error(`'${name}' has an unknown directive @${directive.name}`);
 		}
 	}
-	if (stmt.def === null && stmt.pat.type === "ident") {
-		if (stmt.directives.length === 0 && opts.require_markers !== false) {
+	// One marker to a statement: what a declaration is, it is once. Markers only
+	// ever ask for a check, so stripping every one of them leaves a language
+	// that computes the same and assumes what it cannot check.
+	if (stmt.directives.length > 1) {
+		throw new Error(
+			`'${name}' has ${stmt.directives
+				.map((d) => `@${d.name}`)
+				.join(" and ")}, but a declaration gets exactly one marker`,
+		);
+	}
+	const marker = stmt.directives[0]?.name ?? null;
+
+	if (stmt.pat.type === "application") {
+		// a rule: it reduces either way, and @iota(X) asks for the group of
+		// them to be checked against X, naming the type the way @intro(Nat)
+		// names the type it builds
+		if (marker === null) {
+			if (opts.require_markers !== false) {
+				throw new Error(
+					`a rule of '${name}' reduces, so it is an assumption until something checks it: mark it @iota(X) for the type it matches on`,
+				);
+			}
+		} else if (marker !== "iota") {
+			throw new Error(
+				`a rule of '${name}' may only be @iota(X), not @${marker}`,
+			);
+		} else if (stmt.directives[0]!.arg === null) {
+			throw new Error(
+				"@iota needs the type the rule matches on, as @iota(Nat)",
+			);
+		}
+		return;
+	}
+
+	if (marker === "iota") {
+		throw new Error(
+			`@iota marks a rule, so '${name}' may not claim it: a declaration is @axiom, @inductive, @intro(X) or @rec(X)`,
+		);
+	}
+
+	if (stmt.def === null) {
+		if (marker === null && opts.require_markers !== false) {
 			throw new Error(
 				`'${name}' has no definition, so it is an assumption: mark it @axiom`,
 			);
 		}
-	} else if (stmt.directives.length > 0) {
+	} else if (marker !== null) {
 		throw new Error(
-			`'${name}' is defined, so it is not an assumption: drop the @${stmt.directives[0]!.name}`,
+			`'${name}' is defined, so it is not an assumption: drop the @${marker}`,
 		);
 	}
 }
@@ -1225,10 +1486,18 @@ export function check_stmt(
 	let pat = norm_names(globals, stmt.pat, undefined, def_names);
 
 	let ty: Expr;
+	// what the recursor gives at this pattern, for an iota rule
+	let pat_ty: Expr | null = null;
 	if (stmt.pat.type === "application") {
 		// For pattern match rules, ty may reference pattern variables (e.g. `left A a b : A`).
 		// Destructure against Any first to populate inner_defs, then resolve ty in that context.
-		destructure(globals, pat, { type: "any", tokens: [] }, def_names, inner_defs);
+		pat_ty = destructure(
+			globals,
+			pat,
+			{ type: "any", tokens: [] },
+			def_names,
+			inner_defs,
+		);
 		ty = reduce_simp_app(globals, norm_names(globals, stmt.ty, inner_defs));
 	} else {
 		ty = reduce_simp_app(globals, norm_names(globals, stmt.ty));
@@ -1240,6 +1509,20 @@ export function check_stmt(
 
 	check_is_type(globals, ty, inner_defs);
 	check_inductive_markers(globals, stmt, ty, first_ident(stmt.pat).ident);
+
+	// An iota rule does not get to pick its own type: the declaration already fixed
+	// what it gives at this pattern. Nothing else compares the two, and a
+	// clause that reduced to a term of some other type would take every type in
+	// the language with it.
+	if (pat_ty !== null && !is_subtype(globals, pat_ty, ty)) {
+		throw new Error(
+			`At '${print_expr(pat)}': the rule claims ${print_expr(
+				ty,
+			)}, but ${first_ident(stmt.pat).ident} gives ${print_expr(
+				pat_ty,
+			)} there`,
+		);
+	}
 
 	// reduced like the type above: unfolding a global leaves a redex behind, and
 	// a binder type inside the value has to end up in the same shape as the
@@ -1270,7 +1553,7 @@ export function check_stmt(
 			} else if (directive.name === "intro") {
 				globals[directive.arg!]!.inductive!.constructors.push(first);
 			} else if (directive.name === "rec") {
-				globals[first]!.recursor = recursor_info(globals, directive.arg!);
+				globals[first]!.rec = directive.arg!;
 			}
 		}
 	} else if (stmt.pat.type === "application") {
@@ -1281,7 +1564,31 @@ export function check_stmt(
 		if (!globals[first]) {
 			throw new Error(`${first} not defined`);
 		}
-		globals[first]!.rules.push({ pat, ty, def });
+		const iota = stmt.directives[0]?.arg ?? null;
+		if (iota !== null) {
+			if (!globals[iota]?.inductive) {
+				throw new Error(
+					`@iota(${iota}): ${iota} is not an @inductive type, so there are no constructors to cover`,
+				);
+			}
+			// iota is how an eliminator reduces, so the rules belong to one:
+			// everything else is written in terms of a recursor
+			if (globals[first]!.rec !== iota) {
+				throw new Error(
+					`@iota(${iota}): '${first}' is not the recursor for ${iota}, so these are not its iota rules`,
+				);
+			}
+		}
+		const var_ids = def_names.map((n) => {
+			const v = inner_defs[n];
+			return v !== undefined && v.type === "value_with_type"
+				? v.id
+				: undefined;
+		});
+		globals[first]!.rules.push({ pat, ty, def, var_ids, iota });
+		if (iota !== null) {
+			globals[first]!.iota_complete = check_iota_rules(globals, first, iota);
+		}
 	}
 }
 
@@ -1291,6 +1598,18 @@ export function check_program(
 	opts: CheckOptions = {},
 ) {
 	for (const stmt of stmts) {
+		const started = opts.on_checked ? performance.now() : 0;
 		check_stmt(defs, stmt, opts);
+		opts.on_checked?.(stmt, performance.now() - started);
+	}
+	for (const name in defs) {
+		const decl = defs[name]!;
+		// rules that claimed a type have to cover it: half a set of them
+		// reduces on some constructors and assumes the rest
+		if (decl.iota_complete === false) {
+			throw new Error(
+				`@iota '${name}' has no rule for every constructor of the type it matches on, so it is still an assumption`,
+			);
+		}
 	}
 }

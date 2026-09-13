@@ -1,8 +1,15 @@
 import { parse, type Statement } from "./parser";
 
+export type ExpandOptions = {
+	// called as each file is read and parsed, innermost dependency first, so a
+	// caller can report where the time went and how far it got
+	on_parsed?: (path: string, statements: number, ms: number) => void;
+};
+
 export async function expand(
 	entry: string,
 	load: (path: string) => string | Promise<string>,
+	opts: ExpandOptions = {},
 ): Promise<Statement[]> {
 	const visited = new Set<string>();
 	const visiting = new Set<string>();
@@ -26,7 +33,9 @@ export async function expand(
 		visiting.add(path);
 
 		const text = await load(path);
+		const started = performance.now();
 		const { statements, dependencies } = parse(text);
+		opts.on_parsed?.(path, statements.length, performance.now() - started);
 
 		const dir = dir_of(path);
 
