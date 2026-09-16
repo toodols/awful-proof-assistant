@@ -18,6 +18,5 @@ I want to keep the language simple but creating inductive types as (effectively)
 Embrace the exponentials :sob:
 define multiplication, power, integers, and rationals
 
-To run: `bun run .`, which reports how long each file took to parse and every
-declaration that took more than 10ms to check. `bun run . --all` times every
-declaration and rule.
+To run: `bun run .`, which reports how long each file took to parse and how
+long every declaration and rule took to check.

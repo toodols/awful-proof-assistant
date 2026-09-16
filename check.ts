@@ -16,11 +16,14 @@ type Globals = {
 			def: Expr;
 			var_ids: (number | undefined)[];
 			iota: string | null;
+			// spine_args(pat), cached since reduce_iota looks this up on
+			// every reduction step that reaches this rule's declaration
+			pat_args: Expr[];
 		}[];
 		// whether the rules marked @iota cover the type they match on yet
 		iota_complete?: boolean;
 		// set by @inductive; constructors are filled in by @intro(...)
-		inductive?: { constructors: string[] };
+		inductive?: { constructors: string[]; num_params?: number };
 		// set by @rec(X): which type this eliminates. Reduction never reads it
 		// - it is only how @iota(X) knows whose rules these are meant to be.
 		rec?: string;
@@ -232,35 +235,6 @@ function destructure(
 	}
 }
 
-function typeof_app(
-	globals: Globals,
-	fun: Expr,
-	value: Expr,
-	inner_defs: Record<string, Expr>,
-	// \i : ref[i]
-	ref_tys: Expr[],
-): Expr {
-	if (fun.type === "pi") {
-		const head = fun.head;
-		if (!member_of(globals, value, head, inner_defs, ref_tys)) {
-			throw new Error(
-				`Type mismatch: ${print_expr(value)} has type ${print_expr(
-					type_of(globals, value, inner_defs, ref_tys),
-				)}, which is not a member of ${print_expr(head)}`,
-			);
-		}
-		// rewrite every ref in tail that references the head
-		const tail = fun.tail;
-		return reduce_simp_app(globals, app_subst_new_refs(tail, value));
-	} else if (fun.type === "sorry") {
-		return value;
-	} else {
-		throw new Error(
-			`attempt to apply ${print_expr(fun)} with ${print_expr(value)}`,
-		);
-	}
-}
-
 function type_of(
 	globals: Globals,
 	value: Expr,
@@ -327,10 +301,26 @@ function type_of(
 	} else if (value.type === "application") {
 		// typeof(((a:Ty) => a) b) = apply(typeof(a), b)
 		const fun_ty = type_of(globals, value.fun, inner_defs, ref_tys);
-		return reduce_simp_app(
-			globals,
-			typeof_app(globals, fun_ty, value.value, inner_defs, ref_tys),
-		);
+		if (fun_ty.type === "pi") {
+			if (!member_of(globals, value.value, fun_ty.head, inner_defs, ref_tys)) {
+				throw new Error(
+					`Type mismatch: ${print_expr(value.value)} has type ${print_expr(
+						type_of(globals, value.value, inner_defs, ref_tys),
+					)}, which is not a member of ${print_expr(fun_ty.head)}`,
+				);
+			}
+			// rewrite every ref in tail that references the head
+			return reduce_simp_app(
+				globals,
+				app_subst_new_refs(fun_ty.tail, value.value),
+			);
+		} else if (fun_ty.type === "sorry") {
+			return value.value;
+		} else {
+			throw new Error(
+				`attempt to apply ${print_expr(fun_ty)} with ${print_expr(value.value)}`,
+			);
+		}
 	} else if (value.type === "value_with_type") {
 		return value.ty;
 	} else {
@@ -528,7 +518,7 @@ function reduce_iota(globals: Globals | null, expr: Expr): Expr | null {
 	if (decl === undefined || decl.rules.length === 0) return null;
 	const args = spine_args(expr);
 	for (const rule of decl.rules) {
-		const pat_args = spine_args(rule.pat);
+		const pat_args = rule.pat_args;
 		if (args.length < pat_args.length) continue;
 		const binds = new Map<number, Expr>();
 		let matched = true;
@@ -740,6 +730,12 @@ function struct_eq(
 	b: Expr,
 	ref_tys: Expr[] = [],
 ): boolean {
+	// The plain structural comparison is by far the common case (identical
+	// subterms after substitution), and is cheap. Only pay for the
+	// type_of-based proof irrelevance check below when shapes actually
+	// disagree - it cannot change a "true" verdict the shape check already
+	// gave, only rescue a "false" one.
+	if (struct_eq_shape(globals, a, b, ref_tys)) return true;
 	if (globals !== null) {
 		try {
 			// copies: type_of pushes and pops as it goes and may throw part
@@ -755,24 +751,24 @@ function struct_eq(
 			}
 		} catch {}
 	}
+	return false;
+}
+
+function struct_eq_shape(
+	globals: Globals | null,
+	a: Expr,
+	b: Expr,
+	ref_tys: Expr[],
+): boolean {
 	if (a.type === "application") {
 		return (
 			b.type === "application" &&
 			struct_eq(globals, a.fun, b.fun, ref_tys) &&
 			struct_eq(globals, a.value, b.value, ref_tys)
 		);
-	} else if (a.type === "lambda") {
-		if (b.type !== "lambda") return false;
+	} else if (a.type === "lambda" || a.type === "pi") {
+		if (b.type !== a.type) return false;
 		// inside the binder the context has grown by one
-		if (!struct_eq(globals, a.head, b.head, ref_tys)) return false;
-		ref_tys.push(a.head);
-		try {
-			return struct_eq(globals, a.tail, b.tail, ref_tys);
-		} finally {
-			ref_tys.pop();
-		}
-	} else if (a.type === "pi") {
-		if (b.type !== "pi") return false;
 		if (!struct_eq(globals, a.head, b.head, ref_tys)) return false;
 		ref_tys.push(a.head);
 		try {
@@ -935,7 +931,11 @@ function spine_args(expr: Expr): Expr[] {
 // The parameters are the leading binders every constructor shares and passes
 // to the type unchanged; everything after them is an index.
 function count_params(globals: Globals, ind: string, ind_binders: Binder[]): number {
-	const ctors = globals[ind]!.inductive!.constructors;
+	const inductive = globals[ind]!.inductive!;
+	// the constructors and their arity are fixed once the inductive is fully
+	// declared, so the scan below only ever needs to run once per inductive
+	if (inductive.num_params !== undefined) return inductive.num_params;
+	const ctors = inductive.constructors;
 	let limit = ind_binders.length;
 	for (const c of ctors) {
 		const { binders } = open_telescope(globals[c]!.ty);
@@ -951,8 +951,12 @@ function count_params(globals: Globals, ind: string, ind_binders: Binder[]): num
 				params.every((p, i) => struct_eq(null, args[i]!, p))
 			);
 		});
-		if (ok) return k;
+		if (ok) {
+			inductive.num_params = k;
+			return k;
+		}
 	}
+	inductive.num_params = 0;
 	return 0;
 }
 
@@ -1196,7 +1200,7 @@ function check_iota_rules(globals: Globals, name: string, ind: string): boolean 
 	};
 	const clauses = globals[name]!.rules.map((rule) => ({
 		rule,
-		args: spine_args(rule.pat),
+		args: rule.pat_args,
 	}));
 	for (const c of clauses) {
 		if (c.rule.iota !== null && c.rule.iota !== ind) {
@@ -1585,7 +1589,14 @@ export function check_stmt(
 				? v.id
 				: undefined;
 		});
-		globals[first]!.rules.push({ pat, ty, def, var_ids, iota });
+		globals[first]!.rules.push({
+			pat,
+			ty,
+			def,
+			var_ids,
+			iota,
+			pat_args: spine_args(pat),
+		});
 		if (iota !== null) {
 			globals[first]!.iota_complete = check_iota_rules(globals, first, iota);
 		}

@@ -47,6 +47,7 @@ Nat.Add : Nat -> Nat -> Nat := (a : Nat) => (b : Nat) =>
 	Nat.rec
 		((n : Nat) => Nat)
 		a
+		// a + succ(b) = succ(ih), ih = a + b
 		((n : Nat) => (ih : Nat) => Nat.succ ih)
 		b;
 
@@ -68,8 +69,6 @@ Nat.Sub : Nat -> Nat -> Nat :=
 	(a : Nat) => (b : Nat) =>
 	Nat.rec ((t : Nat) => Nat) a ((m : Nat) => (ih : Nat) => Nat.pred ih) b;
 
-// These say how Nat.rec computes, and it does: both sides are the same term
-// once the recursor fires, so reflexivity proves them.
 // ∀ x ∈ ℕ. x + 0 = x
 Nat.Add.add_zero : (x : Nat) -> Eq Nat (Nat.Add x Nat.zero) x :=
 	(x : Nat) => Eq.refl Nat x;
@@ -232,10 +231,16 @@ Nat.Mul : (a : Nat) -> (b : Nat) -> Nat := (a : Nat) => (b : Nat) =>
 		((n : Nat) => Nat)
 		// case_zero: a * 0 = 0
 		Nat.zero
-		// case_succ: a * succ(b) = succ(a + ih), ih = a * b
-		((n : Nat) => (ih : Nat) => Nat.succ (Nat.Add a ih))
+		// case_succ: a * succ(b) = a + ih, ih = a * b
+		((n : Nat) => (ih : Nat) => Nat.Add a ih)
 		b;
 
 // forall a : Nat. a * 0 = 0
 Nat.Mul.mul_zero : (a : Nat) -> Eq Nat (Nat.Mul a Nat.zero) Nat.zero :=
 	(a : Nat) => Eq.refl Nat Nat.zero;
+
+// forall a : Nat. a * succ(b) = a + a * b
+Nat.Mul.mul_succ : (a : Nat) -> (b : Nat) -> Eq Nat (Nat.Mul a (Nat.succ b)) (Nat.Add a (Nat.Mul a b)) :=
+	(a : Nat) => (b : Nat) => Eq.refl Nat (Nat.Add a (Nat.Mul a b));
+
+
