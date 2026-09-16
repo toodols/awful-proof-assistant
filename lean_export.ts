@@ -617,9 +617,10 @@ function core_args(e: Core): Core[] {
 	const args: Core[] = [];
 	let cur = e;
 	while (cur.k === "app") {
-		args.unshift(cur.arg);
+		args.push(cur.arg);
 		cur = cur.fun;
 	}
+	args.reverse();
 	return args;
 }
 
@@ -767,7 +768,7 @@ function resolve(env: Env, expr: Expr, bound: (string | null)[]): Core {
 	} else if (expr.type === "binding") {
 		throw new Error("found a binding outside lambda or pi");
 	}
-	throw new Error(`cannot export ${expr.type} expression`);
+	throw new Error("unreachable");
 }
 
 // ---------------------------------------------------------------------------
@@ -804,9 +805,10 @@ function spine(expr: Expr): { head: string; args: Expr[] } {
 	const args: Expr[] = [];
 	let cur = expr;
 	while (cur.type === "application") {
-		args.unshift(cur.value);
+		args.push(cur.value);
 		cur = cur.fun;
 	}
+	args.reverse();
 	if (cur.type !== "ident") throw new Error("pattern head is not an ident");
 	return { head: cur.ident, args };
 }
