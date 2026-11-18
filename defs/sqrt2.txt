@@ -1,0 +1,140 @@
+@require "prop.txt"
+@require "equality.txt"
+@require "peano.txt"
+@require "arith.txt"
+@require "double.txt"
+@require "parity.txt"
+@require "order.txt"
+
+Nat.lt_double : (m : Nat) -> Nat.Lt (Nat.succ m) (Nat.double (Nat.succ m)) :=
+	(m : Nat) =>
+	Exists.intro Nat
+		((j : Nat) =>
+			Eq Nat (Nat.Add (Nat.succ (Nat.succ m)) j) (Nat.double (Nat.succ m)))
+		m
+		(Eq.trans Nat
+			(Nat.Add (Nat.succ (Nat.succ m)) m)
+			(Nat.succ (Nat.Add (Nat.succ m) m))
+			(Nat.succ (Nat.succ (Nat.double m)))
+			(Nat.Add.succ_add (Nat.succ m) m)
+			(Eq.congr Nat Nat Nat.succ
+				(Nat.Add (Nat.succ m) m)
+				(Nat.succ (Nat.double m))
+				(Eq.trans Nat
+					(Nat.Add (Nat.succ m) m)
+					(Nat.succ (Nat.Add m m))
+					(Nat.succ (Nat.double m))
+					(Nat.Add.succ_add m m)
+					(Eq.congr Nat Nat Nat.succ (Nat.Add m m) (Nat.double m)
+						(Eq.symm Nat (Nat.double m) (Nat.Add m m) (Nat.double_eq m))))));
+
+Nat.Sqrt2 : Nat -> Prop :=
+	(b : Nat) => (a : Nat) ->
+		Eq Nat (Nat.Mul a a) (Nat.double (Nat.Mul b b)) -> Eq Nat b Nat.zero;
+
+Nat.sqrt2_step : (b : Nat) -> ((m : Nat) -> Nat.Lt m b -> Nat.Sqrt2 m) -> Nat.Sqrt2 b :=
+	(b : Nat) =>
+	(ih : (m : Nat) -> Nat.Lt m b -> Nat.Sqrt2 m) =>
+	(a : Nat) =>
+	(h : Eq Nat (Nat.Mul a a) (Nat.double (Nat.Mul b b))) =>
+	Exists.elim Nat ((k : Nat) => Eq Nat a (Nat.double k))
+		(Eq Nat b Nat.zero)
+		(Nat.sq_even a (Nat.Mul b b) h)
+		((k : Nat) => (ha : Eq Nat a (Nat.double k)) =>
+			Exists.elim Nat ((m : Nat) => Eq Nat b (Nat.double m))
+				(Eq Nat b Nat.zero)
+				(Nat.sq_even b (Nat.Mul k k)
+					(Eq.symm Nat (Nat.double (Nat.Mul k k)) (Nat.Mul b b)
+						(Nat.double_inj (Nat.double (Nat.Mul k k)) (Nat.Mul b b)
+							(Eq.trans Nat
+								(Nat.double (Nat.double (Nat.Mul k k)))
+								(Nat.Mul (Nat.double k) (Nat.double k))
+								(Nat.double (Nat.Mul b b))
+								(Eq.symm Nat
+									(Nat.Mul (Nat.double k) (Nat.double k))
+									(Nat.double (Nat.double (Nat.Mul k k)))
+									(Nat.double_sq k))
+								(Eq.subst Nat a (Nat.double k)
+									((t : Nat) => Eq Nat (Nat.Mul t t) (Nat.double (Nat.Mul b b)))
+									ha h)))))
+				((m : Nat) => (hb : Eq Nat b (Nat.double m)) =>
+					Nat.cases
+						((t : Nat) =>
+							Eq Nat b (Nat.double t) ->
+							Eq Nat (Nat.Mul k k) (Nat.double (Nat.Mul t t)) ->
+							Eq Nat b Nat.zero)
+						((hb0 : Eq Nat b Nat.zero) =>
+							(e : Eq Nat (Nat.Mul k k) Nat.zero) => hb0)
+						((m1 : Nat) =>
+							(hb1 : Eq Nat b (Nat.double (Nat.succ m1))) =>
+							(e : Eq Nat (Nat.Mul k k)
+								(Nat.double (Nat.Mul (Nat.succ m1) (Nat.succ m1)))) =>
+							False.elim (Eq Nat b Nat.zero)
+								(Nat.succ_ne_zero m1
+									(ih (Nat.succ m1)
+										(Eq.subst Nat (Nat.double (Nat.succ m1)) b
+											((t : Nat) => Nat.Lt (Nat.succ m1) t)
+											(Eq.symm Nat b (Nat.double (Nat.succ m1)) hb1)
+											(Nat.lt_double m1))
+										k e)))
+						m
+						hb
+						(Eq.symm Nat
+							(Nat.double (Nat.Mul m m))
+							(Nat.Mul k k)
+							(Nat.double_inj (Nat.double (Nat.Mul m m)) (Nat.Mul k k)
+								(Eq.trans Nat
+									(Nat.double (Nat.double (Nat.Mul m m)))
+									(Nat.Mul b b)
+									(Nat.double (Nat.Mul k k))
+									(Eq.symm Nat
+										(Nat.Mul b b)
+										(Nat.double (Nat.double (Nat.Mul m m)))
+										(Eq.trans Nat
+											(Nat.Mul b b)
+											(Nat.Mul (Nat.double m) (Nat.double m))
+											(Nat.double (Nat.double (Nat.Mul m m)))
+											(Eq.subst Nat b (Nat.double m)
+												((t : Nat) => Eq Nat (Nat.Mul b b) (Nat.Mul t t))
+												hb (Eq.refl Nat (Nat.Mul b b)))
+											(Nat.double_sq m)))
+									(Eq.symm Nat
+										(Nat.double (Nat.Mul k k))
+										(Nat.Mul b b)
+										(Nat.double_inj (Nat.double (Nat.Mul k k)) (Nat.Mul b b)
+											(Eq.trans Nat
+												(Nat.double (Nat.double (Nat.Mul k k)))
+												(Nat.Mul (Nat.double k) (Nat.double k))
+												(Nat.double (Nat.Mul b b))
+												(Eq.symm Nat
+													(Nat.Mul (Nat.double k) (Nat.double k))
+													(Nat.double (Nat.double (Nat.Mul k k)))
+													(Nat.double_sq k))
+												(Eq.subst Nat a (Nat.double k)
+													((t : Nat) => Eq Nat (Nat.Mul t t) (Nat.double (Nat.Mul b b)))
+													ha h)))))))));
+
+Nat.sqrt2_double : (a : Nat) -> (b : Nat) ->
+	Eq Nat (Nat.Mul a a) (Nat.double (Nat.Mul b b)) -> Eq Nat b Nat.zero :=
+	(a : Nat) => (b : Nat) =>
+	Nat.strong_ind Nat.Sqrt2 Nat.sqrt2_step b a;
+
+Nat.sqrt2_irrational : (a : Nat) -> (b : Nat) ->
+	Eq Nat (Nat.Mul a a) (Nat.Mul Nat.two (Nat.Mul b b)) -> Eq Nat b Nat.zero :=
+	(a : Nat) => (b : Nat) =>
+	(h : Eq Nat (Nat.Mul a a) (Nat.Mul Nat.two (Nat.Mul b b))) =>
+	Nat.sqrt2_double a b
+		(Eq.trans Nat
+			(Nat.Mul a a)
+			(Nat.Mul Nat.two (Nat.Mul b b))
+			(Nat.double (Nat.Mul b b))
+			h
+			(Nat.Mul.two_mul (Nat.Mul b b)));
+
+Nat.sqrt2_irrational_ne : (a : Nat) -> (b : Nat) ->
+	Prop.Not (Eq Nat b Nat.zero) ->
+	Prop.Not (Eq Nat (Nat.Mul a a) (Nat.Mul Nat.two (Nat.Mul b b))) :=
+	(a : Nat) => (b : Nat) =>
+	(hb : Prop.Not (Eq Nat b Nat.zero)) =>
+	(h : Eq Nat (Nat.Mul a a) (Nat.Mul Nat.two (Nat.Mul b b))) =>
+	hb (Nat.sqrt2_irrational a b h);
