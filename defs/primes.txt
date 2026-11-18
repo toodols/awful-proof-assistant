@@ -166,3 +166,203 @@ Nat.euclid : (p : Nat) -> (x : Nat) -> (y : Nat) ->
 				((t : Nat) => Eq Nat (Nat.Mul t x) (Nat.succ (Nat.Mul t y)) -> False)
 				(Eq.symm Nat p (Nat.succ (Nat.succ i)) ep)
 				(Nat.euclid_core i x y));
+
+Nat.proper_divisor : (n : Nat) -> Nat.Lt (Nat.succ Nat.zero) n -> Prop.Not (Nat.Prime n) ->
+	Exists Nat ((d : Nat) =>
+		Prop.And (Nat.Dvd d n)
+			(Prop.And
+				(Prop.Not (Eq Nat d (Nat.succ Nat.zero)))
+				(Prop.Not (Eq Nat d n)))) :=
+	(n : Nat) => (h : Nat.Lt (Nat.succ Nat.zero) n) => (hnp : Prop.Not (Nat.Prime n)) =>
+	Decidable.elim
+		(Exists Nat ((d : Nat) =>
+			Prop.And (Nat.Dvd d n)
+				(Prop.And
+					(Prop.Not (Eq Nat d (Nat.succ Nat.zero)))
+					(Prop.Not (Eq Nat d n)))))
+		(Exists Nat ((d : Nat) =>
+			Prop.And (Nat.Dvd d n)
+				(Prop.And
+					(Prop.Not (Eq Nat d (Nat.succ Nat.zero)))
+					(Prop.Not (Eq Nat d n)))))
+		((e : Exists Nat ((d : Nat) =>
+			Prop.And (Nat.Dvd d n)
+				(Prop.And
+					(Prop.Not (Eq Nat d (Nat.succ Nat.zero)))
+					(Prop.Not (Eq Nat d n))))) => e)
+		((hne : Prop.Not (Exists Nat ((d : Nat) =>
+			Prop.And (Nat.Dvd d n)
+				(Prop.And
+					(Prop.Not (Eq Nat d (Nat.succ Nat.zero)))
+					(Prop.Not (Eq Nat d n)))))) =>
+			False.elim
+				(Exists Nat ((d : Nat) =>
+					Prop.And (Nat.Dvd d n)
+						(Prop.And
+							(Prop.Not (Eq Nat d (Nat.succ Nat.zero)))
+							(Prop.Not (Eq Nat d n)))))
+				(hnp
+					(Prop.And.intro
+						(Nat.Lt (Nat.succ Nat.zero) n)
+						((d : Nat) -> Nat.Dvd d n ->
+							Prop.Or (Eq Nat d (Nat.succ Nat.zero)) (Eq Nat d n))
+						h
+						((d : Nat) => (hd : Nat.Dvd d n) =>
+							Decidable.elim (Eq Nat d (Nat.succ Nat.zero))
+								(Prop.Or (Eq Nat d (Nat.succ Nat.zero)) (Eq Nat d n))
+								((e1 : Eq Nat d (Nat.succ Nat.zero)) =>
+									Prop.Or.inl (Eq Nat d (Nat.succ Nat.zero)) (Eq Nat d n) e1)
+								((n1 : Prop.Not (Eq Nat d (Nat.succ Nat.zero))) =>
+									Decidable.elim (Eq Nat d n)
+										(Prop.Or (Eq Nat d (Nat.succ Nat.zero)) (Eq Nat d n))
+										((e2 : Eq Nat d n) =>
+											Prop.Or.inr (Eq Nat d (Nat.succ Nat.zero)) (Eq Nat d n) e2)
+										((n2 : Prop.Not (Eq Nat d n)) =>
+											False.elim
+												(Prop.Or (Eq Nat d (Nat.succ Nat.zero)) (Eq Nat d n))
+												(hne
+													(Exists.intro Nat
+														((c : Nat) =>
+															Prop.And (Nat.Dvd c n)
+																(Prop.And
+																	(Prop.Not (Eq Nat c (Nat.succ Nat.zero)))
+																	(Prop.Not (Eq Nat c n))))
+														d
+														(Prop.And.intro
+															(Nat.Dvd d n)
+															(Prop.And
+																(Prop.Not (Eq Nat d (Nat.succ Nat.zero)))
+																(Prop.Not (Eq Nat d n)))
+															hd
+															(Prop.And.intro
+																(Prop.Not (Eq Nat d (Nat.succ Nat.zero)))
+																(Prop.Not (Eq Nat d n))
+																n1 n2))))))))));
+
+Nat.prime_div_d0 : (d : Nat) -> (k : Nat) -> (n : Nat) ->
+	Nat.Lt (Nat.succ Nat.zero) n -> Eq Nat (Nat.Mul d k) n ->
+	Prop.Not (Eq Nat d Nat.zero) :=
+	(d : Nat) => (k : Nat) => (n : Nat) =>
+	(h : Nat.Lt (Nat.succ Nat.zero) n) => (e : Eq Nat (Nat.Mul d k) n) =>
+	(hz : Eq Nat d Nat.zero) =>
+	Nat.not_lt_zero (Nat.succ Nat.zero)
+		(Eq.subst Nat n Nat.zero ((t : Nat) => Nat.Lt (Nat.succ Nat.zero) t)
+			(Eq.trans Nat n (Nat.Mul d k) Nat.zero
+				(Eq.symm Nat (Nat.Mul d k) n e)
+				(Eq.trans Nat (Nat.Mul d k) (Nat.Mul Nat.zero k) Nat.zero
+					(Eq.congr Nat Nat ((t : Nat) => Nat.Mul t k) d Nat.zero hz)
+					(Nat.Mul.zero_mul k)))
+			h);
+
+Nat.prime_div_k0 : (d : Nat) -> (k : Nat) -> (n : Nat) ->
+	Nat.Lt (Nat.succ Nat.zero) n -> Eq Nat (Nat.Mul d k) n ->
+	Prop.Not (Eq Nat k Nat.zero) :=
+	(d : Nat) => (k : Nat) => (n : Nat) =>
+	(h : Nat.Lt (Nat.succ Nat.zero) n) => (e : Eq Nat (Nat.Mul d k) n) =>
+	(hz : Eq Nat k Nat.zero) =>
+	Nat.not_lt_zero (Nat.succ Nat.zero)
+		(Eq.subst Nat n Nat.zero ((t : Nat) => Nat.Lt (Nat.succ Nat.zero) t)
+			(Eq.trans Nat n (Nat.Mul d k) Nat.zero
+				(Eq.symm Nat (Nat.Mul d k) n e)
+				(Eq.congr Nat Nat (Nat.Mul d) k Nat.zero hz))
+			h);
+
+Nat.prime_div_k1 : (d : Nat) -> (k : Nat) -> (n : Nat) ->
+	Eq Nat (Nat.Mul d k) n -> Prop.Not (Eq Nat d n) ->
+	Prop.Not (Eq Nat k (Nat.succ Nat.zero)) :=
+	(d : Nat) => (k : Nat) => (n : Nat) =>
+	(e : Eq Nat (Nat.Mul d k) n) => (n2 : Prop.Not (Eq Nat d n)) =>
+	(h1 : Eq Nat k (Nat.succ Nat.zero)) =>
+	n2 (Eq.trans Nat d (Nat.Mul d k) n
+		(Eq.symm Nat (Nat.Mul d k) d
+			(Eq.congr Nat Nat (Nat.Mul d) k (Nat.succ Nat.zero) h1))
+		e);
+
+Nat.PrimeDiv : Nat -> Prop :=
+	(n : Nat) => Nat.Lt (Nat.succ Nat.zero) n ->
+		Exists Nat ((p : Nat) => Prop.And (Nat.Prime p) (Nat.Dvd p n));
+
+Nat.prime_div_step : (n : Nat) ->
+	((m : Nat) -> Nat.Lt m n -> Nat.PrimeDiv m) -> Nat.PrimeDiv n :=
+	(n : Nat) =>
+	(ih : (m : Nat) -> Nat.Lt m n -> Nat.PrimeDiv m) =>
+	(h : Nat.Lt (Nat.succ Nat.zero) n) =>
+	Decidable.elim (Nat.Prime n)
+		(Exists Nat ((p : Nat) => Prop.And (Nat.Prime p) (Nat.Dvd p n)))
+		((hp : Nat.Prime n) =>
+			Exists.intro Nat
+				((p : Nat) => Prop.And (Nat.Prime p) (Nat.Dvd p n))
+				n
+				(Prop.And.intro (Nat.Prime n) (Nat.Dvd n n) hp (Nat.dvd_refl n)))
+		((hnp : Prop.Not (Nat.Prime n)) =>
+			Exists.elim Nat
+				((d : Nat) =>
+					Prop.And (Nat.Dvd d n)
+						(Prop.And
+							(Prop.Not (Eq Nat d (Nat.succ Nat.zero)))
+							(Prop.Not (Eq Nat d n))))
+				(Exists Nat ((p : Nat) => Prop.And (Nat.Prime p) (Nat.Dvd p n)))
+				(Nat.proper_divisor n h hnp)
+				((d : Nat) =>
+					(hd : Prop.And (Nat.Dvd d n)
+						(Prop.And
+							(Prop.Not (Eq Nat d (Nat.succ Nat.zero)))
+							(Prop.Not (Eq Nat d n)))) =>
+					Exists.elim Nat ((k : Nat) => Eq Nat (Nat.Mul d k) n)
+						(Exists Nat ((p : Nat) => Prop.And (Nat.Prime p) (Nat.Dvd p n)))
+						(Prop.And.left (Nat.Dvd d n)
+							(Prop.And
+								(Prop.Not (Eq Nat d (Nat.succ Nat.zero)))
+								(Prop.Not (Eq Nat d n)))
+							hd)
+						((k : Nat) => (e : Eq Nat (Nat.Mul d k) n) =>
+							Exists.elim Nat
+								((p : Nat) => Prop.And (Nat.Prime p) (Nat.Dvd p d))
+								(Exists Nat ((p : Nat) => Prop.And (Nat.Prime p) (Nat.Dvd p n)))
+								(ih d
+									(Eq.subst Nat (Nat.Mul d k) n
+										((t : Nat) => Nat.Lt d t)
+										e
+										(Nat.lt_mul_gen d k
+											(Nat.lt_one_cases d
+												(Nat.prime_div_d0 d k n h e)
+												(Prop.And.left
+													(Prop.Not (Eq Nat d (Nat.succ Nat.zero)))
+													(Prop.Not (Eq Nat d n))
+													(Prop.And.right (Nat.Dvd d n)
+														(Prop.And
+															(Prop.Not (Eq Nat d (Nat.succ Nat.zero)))
+															(Prop.Not (Eq Nat d n)))
+														hd)))
+											(Nat.lt_one_cases k
+												(Nat.prime_div_k0 d k n h e)
+												(Nat.prime_div_k1 d k n e
+													(Prop.And.right
+														(Prop.Not (Eq Nat d (Nat.succ Nat.zero)))
+														(Prop.Not (Eq Nat d n))
+														(Prop.And.right (Nat.Dvd d n)
+															(Prop.And
+																(Prop.Not (Eq Nat d (Nat.succ Nat.zero)))
+																(Prop.Not (Eq Nat d n)))
+															hd))))))
+									(Nat.lt_one_cases d
+										(Nat.prime_div_d0 d k n h e)
+										(Prop.And.left
+											(Prop.Not (Eq Nat d (Nat.succ Nat.zero)))
+											(Prop.Not (Eq Nat d n))
+											(Prop.And.right (Nat.Dvd d n)
+												(Prop.And
+													(Prop.Not (Eq Nat d (Nat.succ Nat.zero)))
+													(Prop.Not (Eq Nat d n)))
+												hd))))
+								((p : Nat) =>
+									(hp : Prop.And (Nat.Prime p) (Nat.Dvd p d)) =>
+									Exists.intro Nat
+										((q : Nat) => Prop.And (Nat.Prime q) (Nat.Dvd q n))
+										p
+										(Prop.And.intro (Nat.Prime p) (Nat.Dvd p n)
+											(Prop.And.left (Nat.Prime p) (Nat.Dvd p d) hp)
+											(Nat.dvd_trans p d n
+												(Prop.And.right (Nat.Prime p) (Nat.Dvd p d) hp)
+												(Exists.intro Nat
+													((r : Nat) => Eq Nat (Nat.Mul d r) n) k e)))))));
