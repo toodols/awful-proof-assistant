@@ -366,3 +366,78 @@ Nat.prime_div_step : (n : Nat) ->
 												(Prop.And.right (Nat.Prime p) (Nat.Dvd p d) hp)
 												(Exists.intro Nat
 													((r : Nat) => Eq Nat (Nat.Mul d r) n) k e)))))));
+
+Nat.exists_prime_divisor : (n : Nat) -> Nat.Lt (Nat.succ Nat.zero) n ->
+	Exists Nat ((p : Nat) => Prop.And (Nat.Prime p) (Nat.Dvd p n)) :=
+	Nat.strong_ind Nat.PrimeDiv Nat.prime_div_step;
+
+Nat.primes_infinite : (n : Nat) ->
+	Exists Nat ((p : Nat) => Prop.And (Nat.Prime p) (Nat.Lt n p)) :=
+	(n : Nat) =>
+	Exists.elim Nat ((j : Nat) => Eq Nat (Nat.fact n) (Nat.succ j))
+		(Exists Nat ((p : Nat) => Prop.And (Nat.Prime p) (Nat.Lt n p)))
+		(Nat.fact_pos n)
+		((j : Nat) => (ej : Eq Nat (Nat.fact n) (Nat.succ j)) =>
+			Exists.elim Nat
+				((p : Nat) => Prop.And (Nat.Prime p) (Nat.Dvd p (Nat.succ (Nat.fact n))))
+				(Exists Nat ((p : Nat) => Prop.And (Nat.Prime p) (Nat.Lt n p)))
+				(Nat.exists_prime_divisor (Nat.succ (Nat.fact n))
+					(Exists.intro Nat
+						((r : Nat) => Eq Nat (Nat.Add Nat.two r) (Nat.succ (Nat.fact n)))
+						j
+						(Eq.trans Nat
+							(Nat.Add Nat.two j)
+							(Nat.succ (Nat.succ j))
+							(Nat.succ (Nat.fact n))
+							(Nat.Add.two_add j)
+							(Eq.congr Nat Nat Nat.succ (Nat.succ j) (Nat.fact n)
+								(Eq.symm Nat (Nat.fact n) (Nat.succ j) ej)))))
+				((p : Nat) =>
+					(hp : Prop.And (Nat.Prime p) (Nat.Dvd p (Nat.succ (Nat.fact n)))) =>
+					Prop.Or.elim (Nat.Le p n) (Nat.Lt n p)
+						(Exists Nat ((q : Nat) => Prop.And (Nat.Prime q) (Nat.Lt n q)))
+						(Nat.le_lt_total p n)
+						((hle : Nat.Le p n) =>
+							False.elim
+								(Exists Nat ((q : Nat) => Prop.And (Nat.Prime q) (Nat.Lt n q)))
+								(Exists.elim Nat
+									((x : Nat) => Eq Nat (Nat.Mul p x) (Nat.succ (Nat.fact n)))
+									False
+									(Prop.And.right (Nat.Prime p) (Nat.Dvd p (Nat.succ (Nat.fact n))) hp)
+									((x : Nat) =>
+										(ex : Eq Nat (Nat.Mul p x) (Nat.succ (Nat.fact n))) =>
+										Exists.elim Nat
+											((y : Nat) => Eq Nat (Nat.Mul p y) (Nat.fact n))
+											False
+											(Nat.fact_dvd n p
+												(Nat.lt_one_ne_zero p
+													(Prop.And.left
+														(Nat.Lt (Nat.succ Nat.zero) p)
+														((d : Nat) -> Nat.Dvd d p ->
+															Prop.Or (Eq Nat d (Nat.succ Nat.zero)) (Eq Nat d p))
+														(Prop.And.left (Nat.Prime p)
+															(Nat.Dvd p (Nat.succ (Nat.fact n))) hp)))
+												hle)
+											((y : Nat) => (ey : Eq Nat (Nat.Mul p y) (Nat.fact n)) =>
+												Nat.euclid p x y
+													(Prop.And.left
+														(Nat.Lt (Nat.succ Nat.zero) p)
+														((d : Nat) -> Nat.Dvd d p ->
+															Prop.Or (Eq Nat d (Nat.succ Nat.zero)) (Eq Nat d p))
+														(Prop.And.left (Nat.Prime p)
+															(Nat.Dvd p (Nat.succ (Nat.fact n))) hp))
+													(Eq.trans Nat
+														(Nat.Mul p x)
+														(Nat.succ (Nat.fact n))
+														(Nat.succ (Nat.Mul p y))
+														ex
+														(Eq.congr Nat Nat Nat.succ (Nat.fact n) (Nat.Mul p y)
+															(Eq.symm Nat (Nat.Mul p y) (Nat.fact n) ey)))))))
+						((hlt : Nat.Lt n p) =>
+							Exists.intro Nat
+								((q : Nat) => Prop.And (Nat.Prime q) (Nat.Lt n q))
+								p
+								(Prop.And.intro (Nat.Prime p) (Nat.Lt n p)
+									(Prop.And.left (Nat.Prime p)
+										(Nat.Dvd p (Nat.succ (Nat.fact n))) hp)
+									hlt))));
