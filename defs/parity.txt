@@ -1,0 +1,168 @@
+@require "prop.txt"
+@require "equality.txt"
+@require "peano.txt"
+@require "arith.txt"
+@require "double.txt"
+
+Nat.parity : (n : Nat) ->
+	Prop.Or
+		(Exists Nat ((k : Nat) => Eq Nat n (Nat.double k)))
+		(Exists Nat ((k : Nat) => Eq Nat n (Nat.succ (Nat.double k)))) :=
+	Nat.rec_prop
+		((n : Nat) =>
+			Prop.Or
+				(Exists Nat ((k : Nat) => Eq Nat n (Nat.double k)))
+				(Exists Nat ((k : Nat) => Eq Nat n (Nat.succ (Nat.double k)))))
+		(Prop.Or.inl
+			(Exists Nat ((k : Nat) => Eq Nat Nat.zero (Nat.double k)))
+			(Exists Nat ((k : Nat) => Eq Nat Nat.zero (Nat.succ (Nat.double k))))
+			(Exists.intro Nat ((k : Nat) => Eq Nat Nat.zero (Nat.double k))
+				Nat.zero (Eq.refl Nat Nat.zero)))
+		((n : Nat) =>
+			(ih : Prop.Or
+				(Exists Nat ((k : Nat) => Eq Nat n (Nat.double k)))
+				(Exists Nat ((k : Nat) => Eq Nat n (Nat.succ (Nat.double k))))) =>
+			Prop.Or.elim
+				(Exists Nat ((k : Nat) => Eq Nat n (Nat.double k)))
+				(Exists Nat ((k : Nat) => Eq Nat n (Nat.succ (Nat.double k))))
+				(Prop.Or
+					(Exists Nat ((k : Nat) => Eq Nat (Nat.succ n) (Nat.double k)))
+					(Exists Nat ((k : Nat) => Eq Nat (Nat.succ n) (Nat.succ (Nat.double k)))))
+				ih
+				((h : Exists Nat ((k : Nat) => Eq Nat n (Nat.double k))) =>
+					Exists.elim Nat ((k : Nat) => Eq Nat n (Nat.double k))
+						(Prop.Or
+							(Exists Nat ((k : Nat) => Eq Nat (Nat.succ n) (Nat.double k)))
+							(Exists Nat ((k : Nat) => Eq Nat (Nat.succ n) (Nat.succ (Nat.double k)))))
+						h
+						((k : Nat) => (e : Eq Nat n (Nat.double k)) =>
+							Prop.Or.inr
+								(Exists Nat ((k : Nat) => Eq Nat (Nat.succ n) (Nat.double k)))
+								(Exists Nat ((k : Nat) => Eq Nat (Nat.succ n) (Nat.succ (Nat.double k))))
+								(Exists.intro Nat
+									((k : Nat) => Eq Nat (Nat.succ n) (Nat.succ (Nat.double k)))
+									k
+									(Eq.congr Nat Nat Nat.succ n (Nat.double k) e))))
+				((h : Exists Nat ((k : Nat) => Eq Nat n (Nat.succ (Nat.double k)))) =>
+					Exists.elim Nat ((k : Nat) => Eq Nat n (Nat.succ (Nat.double k)))
+						(Prop.Or
+							(Exists Nat ((k : Nat) => Eq Nat (Nat.succ n) (Nat.double k)))
+							(Exists Nat ((k : Nat) => Eq Nat (Nat.succ n) (Nat.succ (Nat.double k)))))
+						h
+						((k : Nat) => (e : Eq Nat n (Nat.succ (Nat.double k))) =>
+							Prop.Or.inl
+								(Exists Nat ((k : Nat) => Eq Nat (Nat.succ n) (Nat.double k)))
+								(Exists Nat ((k : Nat) => Eq Nat (Nat.succ n) (Nat.succ (Nat.double k))))
+								(Exists.intro Nat
+									((k : Nat) => Eq Nat (Nat.succ n) (Nat.double k))
+									(Nat.succ k)
+									(Eq.congr Nat Nat Nat.succ n (Nat.succ (Nat.double k)) e)))));
+
+Nat.odd_ne_even : (y : Nat) -> (x : Nat) ->
+	Eq Nat (Nat.succ (Nat.double x)) (Nat.double y) -> False :=
+	Nat.rec_prop
+		((y : Nat) => (x : Nat) ->
+			Eq Nat (Nat.succ (Nat.double x)) (Nat.double y) -> False)
+		((x : Nat) => (h : Eq Nat (Nat.succ (Nat.double x)) Nat.zero) =>
+			Nat.succ_ne_zero (Nat.double x) h)
+		((y : Nat) =>
+			(ih : (x : Nat) -> Eq Nat (Nat.succ (Nat.double x)) (Nat.double y) -> False) =>
+			Nat.cases
+				((x : Nat) =>
+					Eq Nat (Nat.succ (Nat.double x)) (Nat.succ (Nat.succ (Nat.double y))) -> False)
+				((h : Eq Nat (Nat.succ Nat.zero) (Nat.succ (Nat.succ (Nat.double y)))) =>
+					Nat.zero_ne_succ (Nat.double y)
+						(Nat.succ_inj Nat.zero (Nat.succ (Nat.double y)) h))
+				((x : Nat) =>
+					(h : Eq Nat
+						(Nat.succ (Nat.succ (Nat.succ (Nat.double x))))
+						(Nat.succ (Nat.succ (Nat.double y)))) =>
+					ih x
+						(Nat.succ_inj
+							(Nat.succ (Nat.double x))
+							(Nat.double y)
+							(Nat.succ_inj
+								(Nat.succ (Nat.succ (Nat.double x)))
+								(Nat.succ (Nat.double y))
+								h))));
+
+Nat.odd_sq : (k : Nat) ->
+	Exists Nat ((m : Nat) =>
+		Eq Nat
+			(Nat.Mul (Nat.succ (Nat.double k)) (Nat.succ (Nat.double k)))
+			(Nat.succ (Nat.double m))) :=
+	(k : Nat) =>
+	Exists.intro Nat
+		((m : Nat) =>
+			Eq Nat
+				(Nat.Mul (Nat.succ (Nat.double k)) (Nat.succ (Nat.double k)))
+				(Nat.succ (Nat.double m)))
+		(Nat.Add k (Nat.Mul (Nat.succ (Nat.double k)) k))
+		(Eq.trans Nat
+			(Nat.Add (Nat.succ (Nat.double k))
+				(Nat.Mul (Nat.succ (Nat.double k)) (Nat.double k)))
+			(Nat.Add (Nat.succ (Nat.double k))
+				(Nat.double (Nat.Mul (Nat.succ (Nat.double k)) k)))
+			(Nat.succ (Nat.double (Nat.Add k (Nat.Mul (Nat.succ (Nat.double k)) k))))
+			(Eq.congr Nat Nat (Nat.Add (Nat.succ (Nat.double k)))
+				(Nat.Mul (Nat.succ (Nat.double k)) (Nat.double k))
+				(Nat.double (Nat.Mul (Nat.succ (Nat.double k)) k))
+				(Nat.Mul.mul_double (Nat.succ (Nat.double k)) k))
+			(Eq.trans Nat
+				(Nat.Add (Nat.succ (Nat.double k))
+					(Nat.double (Nat.Mul (Nat.succ (Nat.double k)) k)))
+				(Nat.succ (Nat.Add (Nat.double k)
+					(Nat.double (Nat.Mul (Nat.succ (Nat.double k)) k))))
+				(Nat.succ (Nat.double (Nat.Add k (Nat.Mul (Nat.succ (Nat.double k)) k))))
+				(Nat.Add.succ_add (Nat.double k)
+					(Nat.double (Nat.Mul (Nat.succ (Nat.double k)) k)))
+				(Eq.congr Nat Nat Nat.succ
+					(Nat.Add (Nat.double k)
+						(Nat.double (Nat.Mul (Nat.succ (Nat.double k)) k)))
+					(Nat.double (Nat.Add k (Nat.Mul (Nat.succ (Nat.double k)) k)))
+					(Eq.symm Nat
+						(Nat.double (Nat.Add k (Nat.Mul (Nat.succ (Nat.double k)) k)))
+						(Nat.Add (Nat.double k)
+							(Nat.double (Nat.Mul (Nat.succ (Nat.double k)) k)))
+						(Nat.double_add k (Nat.Mul (Nat.succ (Nat.double k)) k))))));
+
+Nat.sq_even : (a : Nat) -> (c : Nat) ->
+	Eq Nat (Nat.Mul a a) (Nat.double c) ->
+	Exists Nat ((k : Nat) => Eq Nat a (Nat.double k)) :=
+	(a : Nat) => (c : Nat) => (h : Eq Nat (Nat.Mul a a) (Nat.double c)) =>
+	Prop.Or.elim
+		(Exists Nat ((k : Nat) => Eq Nat a (Nat.double k)))
+		(Exists Nat ((k : Nat) => Eq Nat a (Nat.succ (Nat.double k))))
+		(Exists Nat ((k : Nat) => Eq Nat a (Nat.double k)))
+		(Nat.parity a)
+		((e : Exists Nat ((k : Nat) => Eq Nat a (Nat.double k))) => e)
+		((e : Exists Nat ((k : Nat) => Eq Nat a (Nat.succ (Nat.double k)))) =>
+			Exists.elim Nat ((k : Nat) => Eq Nat a (Nat.succ (Nat.double k)))
+				(Exists Nat ((k : Nat) => Eq Nat a (Nat.double k)))
+				e
+				((k : Nat) => (ha : Eq Nat a (Nat.succ (Nat.double k))) =>
+					Exists.elim Nat
+						((m : Nat) =>
+							Eq Nat
+								(Nat.Mul (Nat.succ (Nat.double k)) (Nat.succ (Nat.double k)))
+								(Nat.succ (Nat.double m)))
+						(Exists Nat ((k : Nat) => Eq Nat a (Nat.double k)))
+						(Nat.odd_sq k)
+						((m : Nat) =>
+							(hm : Eq Nat
+								(Nat.Mul (Nat.succ (Nat.double k)) (Nat.succ (Nat.double k)))
+								(Nat.succ (Nat.double m))) =>
+							False.elim
+								(Exists Nat ((k : Nat) => Eq Nat a (Nat.double k)))
+								(Nat.odd_ne_even c m
+									(Eq.trans Nat
+										(Nat.succ (Nat.double m))
+										(Nat.Mul (Nat.succ (Nat.double k)) (Nat.succ (Nat.double k)))
+										(Nat.double c)
+										(Eq.symm Nat
+											(Nat.Mul (Nat.succ (Nat.double k)) (Nat.succ (Nat.double k)))
+											(Nat.succ (Nat.double m))
+											hm)
+										(Eq.subst Nat a (Nat.succ (Nat.double k))
+											((t : Nat) => Eq Nat (Nat.Mul t t) (Nat.double c))
+											ha h))))));

@@ -7,3 +7,4 @@
 @require "even.txt"
 @require "arith.txt"
 @require "double.txt"
+@require "parity.txt"
