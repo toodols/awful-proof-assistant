@@ -1,0 +1,76 @@
+@require "prop.txt"
+@require "equality.txt"
+@require "peano.txt"
+@require "arith.txt"
+
+Nat.Le : Nat -> Nat -> Prop :=
+	(m : Nat) => (n : Nat) => Exists Nat ((k : Nat) => Eq Nat (Nat.Add m k) n);
+
+Nat.Lt : Nat -> Nat -> Prop :=
+	(m : Nat) => (n : Nat) => Nat.Le (Nat.succ m) n;
+
+Nat.lt_succ : (n : Nat) -> Nat.Lt n (Nat.succ n) :=
+	(n : Nat) =>
+	Exists.intro Nat
+		((k : Nat) => Eq Nat (Nat.Add (Nat.succ n) k) (Nat.succ n))
+		Nat.zero
+		(Eq.refl Nat (Nat.succ n));
+
+Nat.not_lt_zero : (m : Nat) -> Nat.Lt m Nat.zero -> False :=
+	(m : Nat) => (h : Nat.Lt m Nat.zero) =>
+	Exists.elim Nat ((j : Nat) => Eq Nat (Nat.Add (Nat.succ m) j) Nat.zero)
+		False h
+		((j : Nat) => (e : Eq Nat (Nat.Add (Nat.succ m) j) Nat.zero) =>
+			Nat.succ_ne_zero (Nat.Add m j)
+				(Eq.trans Nat
+					(Nat.succ (Nat.Add m j))
+					(Nat.Add (Nat.succ m) j)
+					Nat.zero
+					(Eq.symm Nat (Nat.Add (Nat.succ m) j) (Nat.succ (Nat.Add m j))
+						(Nat.Add.succ_add m j))
+					e));
+
+Nat.strong_ind : (P : Nat -> Prop) ->
+	((n : Nat) -> ((m : Nat) -> Nat.Lt m n -> P m) -> P n) ->
+	(n : Nat) -> P n :=
+	(P : Nat -> Prop) =>
+	(step : (n : Nat) -> ((m : Nat) -> Nat.Lt m n -> P m) -> P n) =>
+	(n : Nat) =>
+	Nat.rec_prop
+		((t : Nat) => (m : Nat) -> Nat.Lt m t -> P m)
+		((m : Nat) => (h : Nat.Lt m Nat.zero) =>
+			False.elim (P m) (Nat.not_lt_zero m h))
+		((t : Nat) =>
+			(ih : (m : Nat) -> Nat.Lt m t -> P m) =>
+			(m : Nat) => (h : Nat.Lt m (Nat.succ t)) =>
+			Exists.elim Nat
+				((j : Nat) => Eq Nat (Nat.Add (Nat.succ m) j) (Nat.succ t))
+				(P m) h
+				((j : Nat) => (e : Eq Nat (Nat.Add (Nat.succ m) j) (Nat.succ t)) =>
+					Nat.cases
+						((i : Nat) => Eq Nat (Nat.Add m i) t -> P m)
+						((e2 : Eq Nat m t) =>
+							Eq.subst Nat t m P (Eq.symm Nat m t e2) (step t ih))
+						((i : Nat) => (e2 : Eq Nat (Nat.succ (Nat.Add m i)) t) =>
+							ih m
+								(Exists.intro Nat
+									((r : Nat) => Eq Nat (Nat.Add (Nat.succ m) r) t)
+									i
+									(Eq.trans Nat
+										(Nat.Add (Nat.succ m) i)
+										(Nat.succ (Nat.Add m i))
+										t
+										(Nat.Add.succ_add m i)
+										e2)))
+						j
+						(Nat.succ_inj (Nat.Add m j) t
+							(Eq.trans Nat
+								(Nat.succ (Nat.Add m j))
+								(Nat.Add (Nat.succ m) j)
+								(Nat.succ t)
+								(Eq.symm Nat (Nat.Add (Nat.succ m) j) (Nat.succ (Nat.Add m j))
+									(Nat.Add.succ_add m j))
+								e))))
+		(Nat.succ n)
+		n
+		(Nat.lt_succ n);
