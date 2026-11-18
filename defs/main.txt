@@ -5,3 +5,4 @@
 @require "integer.txt"
 @require "set.txt"
 @require "even.txt"
+@require "arith.txt"
