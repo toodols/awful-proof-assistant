@@ -1,7 +1,62 @@
-@require "prop.txt"
-@require "equality.txt"
-@require "peano.txt"
 @require "arith.txt"
+
+Nat.double : Nat -> Nat :=
+	(n : Nat) =>
+	Nat.rec
+		((t : Nat) => Nat)
+		Nat.zero
+		((m : Nat) => (ih : Nat) => Nat.succ (Nat.succ ih))
+		n;
+
+// double is injective. Induction on the first argument with the second still
+// quantified, then cases on the second.
+Nat.double_inj.zero : (b : Nat) ->
+	Eq Nat (Nat.double Nat.zero) (Nat.double b) -> Eq Nat Nat.zero b :=
+	Nat.rec_prop
+		((b : Nat) =>
+			Eq Nat (Nat.double Nat.zero) (Nat.double b) -> Eq Nat Nat.zero b)
+		((h : Eq Nat Nat.zero Nat.zero) => Eq.refl Nat Nat.zero)
+		((b : Nat) =>
+			(ih : Eq Nat (Nat.double Nat.zero) (Nat.double b) ->
+				Eq Nat Nat.zero b) =>
+			(h : Eq Nat Nat.zero (Nat.succ (Nat.succ (Nat.double b)))) =>
+			False.elim (Eq Nat Nat.zero (Nat.succ b))
+				(Nat.zero_ne_succ (Nat.succ (Nat.double b)) h));
+
+Nat.double_inj.succ : (a : Nat) ->
+	((b : Nat) -> Eq Nat (Nat.double a) (Nat.double b) -> Eq Nat a b) ->
+	(b : Nat) ->
+	Eq Nat (Nat.double (Nat.succ a)) (Nat.double b) -> Eq Nat (Nat.succ a) b :=
+	(a : Nat) =>
+	(ih : (b : Nat) -> Eq Nat (Nat.double a) (Nat.double b) -> Eq Nat a b) =>
+	Nat.rec_prop
+		((b : Nat) =>
+			Eq Nat (Nat.double (Nat.succ a)) (Nat.double b) ->
+			Eq Nat (Nat.succ a) b)
+		((h : Eq Nat (Nat.succ (Nat.succ (Nat.double a))) Nat.zero) =>
+			False.elim (Eq Nat (Nat.succ a) Nat.zero)
+				(Nat.succ_ne_zero (Nat.succ (Nat.double a)) h))
+		((b : Nat) =>
+			(ihb : Eq Nat (Nat.double (Nat.succ a)) (Nat.double b) ->
+				Eq Nat (Nat.succ a) b) =>
+			(h : Eq Nat
+				(Nat.succ (Nat.succ (Nat.double a)))
+				(Nat.succ (Nat.succ (Nat.double b)))) =>
+			Eq.congr Nat Nat Nat.succ a b
+				(ih b
+					(Nat.succ_inj (Nat.double a) (Nat.double b)
+						(Nat.succ_inj
+							(Nat.succ (Nat.double a))
+							(Nat.succ (Nat.double b))
+							h))));
+
+Nat.double_inj : (a : Nat) -> (b : Nat) ->
+	Eq Nat (Nat.double a) (Nat.double b) -> Eq Nat a b :=
+	Nat.rec_prop
+		((a : Nat) =>
+			(b : Nat) -> Eq Nat (Nat.double a) (Nat.double b) -> Eq Nat a b)
+		Nat.double_inj.zero
+		Nat.double_inj.succ;
 
 Nat.double_eq : (n : Nat) -> Eq Nat (Nat.double n) (Nat.Add n n) :=
 	Nat.rec_prop

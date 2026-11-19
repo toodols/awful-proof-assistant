@@ -1,3 +1,5 @@
+@require "arith.txt"
+
 @inductive
 Int : Type;
 @intro(Int)
@@ -114,3 +116,25 @@ abs_zero_eq_zero : Eq Nat (Int.abs_nat (Int.nat Nat.zero)) Nat.zero :=
 
 abs_one_eq_one : Eq Nat (Int.abs_nat (Int.nat Nat.one)) Nat.one :=
 	Eq.refl Nat Nat.one;
+// -n, with -0 = 0 and -(succ k) = neg_succ k
+Int.neg_nat : Nat -> Int :=
+	(n : Nat) =>
+	Nat.rec ((t : Nat) => Int)
+		(Int.nat Nat.zero)
+		((k : Nat) => (ih : Int) => Int.neg_succ k)
+		n;
+
+Int.abs_neg_nat : (n : Nat) -> Eq Nat (Int.abs_nat (Int.neg_nat n)) n :=
+	Nat.rec_prop
+		((n : Nat) => Eq Nat (Int.abs_nat (Int.neg_nat n)) n)
+		(Eq.refl Nat Nat.zero)
+		((k : Nat) => (ih : Eq Nat (Int.abs_nat (Int.neg_nat k)) k) =>
+			Eq.refl Nat (Nat.succ k));
+
+// x * d for a natural d: all the numerator of a sum of fractions needs
+Int.mul_nat : Int -> Nat -> Int :=
+	(x : Int) => (d : Nat) =>
+	Int.rec ((t : Int) => Int)
+		((m : Nat) => Int.nat (Nat.Mul m d))
+		((m : Nat) => Int.neg_nat (Nat.Mul (Nat.succ m) d))
+		x;

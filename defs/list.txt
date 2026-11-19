@@ -1,4 +1,4 @@
-@require "peano.txt"
+@require "nat.txt"
 
 @inductive
 List : Type -> Type;

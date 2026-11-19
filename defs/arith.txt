@@ -1,14 +1,117 @@
-@require "prop.txt"
-@require "equality.txt"
-@require "peano.txt"
+@require "nat.txt"
 
-Eq.subst : (A : Type) -> (a : A) -> (b : A) -> (P : A -> Prop) -> Eq A a b -> P a -> P b :=
-	(A : Type) => (a : A) => (b : A) => (P : A -> Prop) => (h : Eq A a b) => (x : P a) =>
-	Eq.rec_prop A a ((t : A) => (e : Eq A a t) => P t) x b h;
+// Addition, by recursion on the second argument.
+Nat.Add : Nat -> Nat -> Nat := (a : Nat) => (b : Nat) =>
+	Nat.rec
+		((n : Nat) => Nat)
+		a
+		// a + succ(b) = succ(ih), ih = a + b
+		((n : Nat) => (ih : Nat) => Nat.succ ih)
+		b;
 
-Nat.cases : (P : Nat -> Prop) -> P Nat.zero -> ((n : Nat) -> P (Nat.succ n)) -> (n : Nat) -> P n :=
-	(P : Nat -> Prop) => (z : P Nat.zero) => (s : (n : Nat) -> P (Nat.succ n)) =>
-	Nat.rec_prop P z ((n : Nat) => (ih : P n) => s n);
+Nat.Mul : (a : Nat) -> (b : Nat) -> Nat := (a : Nat) => (b : Nat) =>
+	Nat.rec
+		((n : Nat) => Nat)
+		// case_zero: a * 0 = 0
+		Nat.zero
+		// case_succ: a * succ(b) = a + ih, ih = a * b
+		((n : Nat) => (ih : Nat) => Nat.Add a ih)
+		b;
+
+Nat.Sub : Nat -> Nat -> Nat :=
+	(a : Nat) => (b : Nat) =>
+	Nat.rec ((t : Nat) => Nat) a ((m : Nat) => (ih : Nat) => Nat.pred ih) b;
+
+// ∀ x ∈ ℕ. x + 0 = x
+Nat.Add.add_zero : (x : Nat) -> Eq Nat (Nat.Add x Nat.zero) x :=
+	(x : Nat) => Eq.refl Nat x;
+// ∀ x, y ∈ ℕ. x + S y = S (x + y)
+Nat.Add.add_succ : (x : Nat) -> (y : Nat) -> Eq Nat (Nat.Add x (Nat.succ y)) (Nat.succ (Nat.Add x y)) :=
+	(x : Nat) => (y : Nat) => Eq.refl Nat (Nat.succ (Nat.Add x y));
+
+// ∀ x ∈ ℕ. 0 + x = x
+Nat.Add.zero_add : (x : Nat) -> Eq Nat (Nat.Add Nat.zero x) x :=
+	Nat.rec_prop
+		((x : Nat) => Eq Nat (Nat.Add Nat.zero x) x)
+		(Nat.Add.add_zero Nat.zero) // 0 + 0 = 0
+		(
+			// goal : 0 + x = x -> 0 + S x = S x
+			// h : 0 + x = x := intro on goal
+			// l1 : 0 + S x = S (0 + x) := add_succ on 0 x
+			// l2 : S (0 + x) = S x := Eq.congr on S h
+			// 0 + S x = S x := Eq.trans on l1 l2
+			(x : Nat) => (h : Eq Nat (Nat.Add Nat.zero x) x) =>
+			Eq.trans Nat
+				(Nat.Add Nat.zero (Nat.succ x)) // 0 + S x
+				(Nat.succ (Nat.Add Nat.zero x)) // S (0 + x)
+				(Nat.succ x) // S x
+				(Nat.Add.add_succ Nat.zero x) // 0 + S x = S (0 + x)
+				(Eq.congr Nat Nat Nat.succ (Nat.Add Nat.zero x) x h)
+		);
+
+
+// ∀ x ∈ ℕ. S x + y = S (x + y)
+Nat.Add.succ_add : (x : Nat) -> (y : Nat) -> Eq Nat (Nat.Add (Nat.succ x) y) (Nat.succ (Nat.Add x y)) :=
+	(x : Nat) => Nat.rec_prop
+		((y : Nat) => Eq Nat (Nat.Add (Nat.succ x) y) (Nat.succ (Nat.Add x y)))
+		// goal: S x + 0 = S (x + 0)
+		// l1: S x + 0 = S x := add_zero on S x
+		// l2: x + 0 = x := add_zero on x
+		// l3: x = x + 0 := Eq.symm on l2
+		// l4: S x = S (x + 0) := Eq.congr S on l3
+		// S x + 0 = S (x + 0) := Eq.trans on l1 l4
+		(
+			Eq.trans Nat
+				(Nat.Add (Nat.succ x) Nat.zero)
+				(Nat.succ x)
+				(Nat.succ (Nat.Add x Nat.zero))
+				(Nat.Add.add_zero (Nat.succ x))
+				(
+					Eq.congr Nat Nat Nat.succ x (Nat.Add x Nat.zero)
+						(Eq.symm Nat (Nat.Add x Nat.zero) x (Nat.Add.add_zero x))
+				)
+		)
+
+		// goal: S x + y = S (x + y) -> S x + S y = S (x + S y)
+		// h : S x + y = S (x + y) := intro on goal
+		// l1: x + S y = S (x + y) := add_succ on x y
+		// l2: S (x + y) = x + S y := Eq.symm on l1
+		// l3: S x + y = x + S y := Eq.trans on h, l2
+		// l4: S (S x + y) = S (x + S y) := Eq.congr S on l3
+		// l5: S x + S y = S (S x + y) := add_succ on (S x) y
+		// goal: S x + S y = S (x + S y) := Eq.trans on l5 l4
+		// 
+		(
+			(y : Nat) => (h : Eq Nat (Nat.Add (Nat.succ x) y) (Nat.succ (Nat.Add x y))) =>
+			Eq.trans Nat
+				(Nat.Add (Nat.succ x) (Nat.succ y))
+				(Nat.succ (Nat.Add (Nat.succ x) y))
+				(Nat.succ (Nat.Add x (Nat.succ y)))
+				(Nat.Add.add_succ (Nat.succ x) y)
+				(Eq.congr Nat Nat Nat.succ
+					(Nat.Add (Nat.succ x) y)
+					(Nat.Add x (Nat.succ y))
+					(Eq.trans Nat
+						(Nat.Add (Nat.succ x) y)
+						(Nat.succ (Nat.Add x y))
+						(Nat.Add x (Nat.succ y))
+						h
+						(Eq.symm Nat
+							(Nat.Add x (Nat.succ y))
+							(Nat.succ (Nat.Add x y))
+							(Nat.Add.add_succ x y)
+						)
+					)
+				)
+		);
+
+// forall a : Nat. a * 0 = 0
+Nat.Mul.mul_zero : (a : Nat) -> Eq Nat (Nat.Mul a Nat.zero) Nat.zero :=
+	(a : Nat) => Eq.refl Nat Nat.zero;
+
+// forall a : Nat. a * succ(b) = a + a * b
+Nat.Mul.mul_succ : (a : Nat) -> (b : Nat) -> Eq Nat (Nat.Mul a (Nat.succ b)) (Nat.Add a (Nat.Mul a b)) :=
+	(a : Nat) => (b : Nat) => Eq.refl Nat (Nat.Add a (Nat.Mul a b));
 
 Nat.Add.add_comm : (x : Nat) -> (y : Nat) -> Eq Nat (Nat.Add x y) (Nat.Add y x) :=
 	(x : Nat) =>
@@ -185,3 +288,35 @@ Nat.Mul.one_mul : (a : Nat) -> Eq Nat (Nat.Mul (Nat.succ Nat.zero) a) a :=
 		a
 		(Nat.Mul.mul_comm (Nat.succ Nat.zero) a)
 		(Nat.Mul.mul_one a);
+
+Nat.mul_ne_zero : (b : Nat) -> (d : Nat) ->
+	NotEq Nat b Nat.zero -> NotEq Nat d Nat.zero -> NotEq Nat (Nat.Mul b d) Nat.zero :=
+	(b : Nat) => (d : Nat) =>
+	Nat.cases
+		((x : Nat) => NotEq Nat x Nat.zero -> NotEq Nat d Nat.zero ->
+			NotEq Nat (Nat.Mul x d) Nat.zero)
+		((hz : NotEq Nat Nat.zero Nat.zero) => (hd : NotEq Nat d Nat.zero) =>
+			False.elim (NotEq Nat (Nat.Mul Nat.zero d) Nat.zero)
+				(hz (Eq.refl Nat Nat.zero)))
+		((i : Nat) =>
+			Nat.cases
+				((y : Nat) => NotEq Nat (Nat.succ i) Nat.zero -> NotEq Nat y Nat.zero ->
+					NotEq Nat (Nat.Mul (Nat.succ i) y) Nat.zero)
+				((hb : NotEq Nat (Nat.succ i) Nat.zero) => (hz : NotEq Nat Nat.zero Nat.zero) =>
+					False.elim (NotEq Nat (Nat.Mul (Nat.succ i) Nat.zero) Nat.zero)
+						(hz (Eq.refl Nat Nat.zero)))
+				((j : Nat) => (hb : NotEq Nat (Nat.succ i) Nat.zero) =>
+					(hj : NotEq Nat (Nat.succ j) Nat.zero) =>
+					(z : Eq Nat (Nat.Add (Nat.succ i) (Nat.Mul (Nat.succ i) j)) Nat.zero) =>
+					Nat.succ_ne_zero (Nat.Add i (Nat.Mul (Nat.succ i) j))
+						(Eq.trans Nat
+							(Nat.succ (Nat.Add i (Nat.Mul (Nat.succ i) j)))
+							(Nat.Add (Nat.succ i) (Nat.Mul (Nat.succ i) j))
+							Nat.zero
+							(Eq.symm Nat
+								(Nat.Add (Nat.succ i) (Nat.Mul (Nat.succ i) j))
+								(Nat.succ (Nat.Add i (Nat.Mul (Nat.succ i) j)))
+								(Nat.Add.succ_add i (Nat.Mul (Nat.succ i) j)))
+							z))
+				d)
+		b;

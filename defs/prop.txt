@@ -156,6 +156,31 @@ Decidable.rec a motive case_yes case_no (Decidable.yes a h) :
 Decidable.rec a motive case_yes case_no (Decidable.no a h) :
 	motive (Decidable.no a h) := case_no h;
 
+// Reducing a fraction needs a greatest common divisor and exact division.
+// There is no choice principle here, but `classical` decides every proposition,
+// and a decision can be eliminated into Nat. So both are found by a bounded
+// search that asks `classical` at each step, and are specified by the lemmas
+// below rather than by computation.
+
+Decidable.rec_prop :
+	(a : Prop) ->
+	(motive : Decidable a -> Prop) ->
+	(case_yes : (h : a) -> motive (Decidable.yes a h)) ->
+	(case_no : (h : Prop.Not a) -> motive (Decidable.no a h)) ->
+	(target : Decidable a) ->
+	motive target :=
+	(a : Prop) =>
+	(motive : Decidable a -> Prop) =>
+	(case_yes : (h : a) -> motive (Decidable.yes a h)) =>
+	(case_no : (h : Prop.Not a) -> motive (Decidable.no a h)) =>
+	(target : Decidable a) =>
+	Lift.elim (motive target)
+		(Decidable.rec a
+			((t : Decidable a) => Lift (motive t))
+			((h : a) => Lift.intro (motive (Decidable.yes a h)) (case_yes h))
+			((h : Prop.Not a) => Lift.intro (motive (Decidable.no a h)) (case_no h))
+			target);
+
 @axiom
 classical : (a : Prop) -> Decidable a;
 

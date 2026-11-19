@@ -1,7 +1,3 @@
-@require "prop.txt"
-@require "equality.txt"
-@require "peano.txt"
-@require "arith.txt"
 @require "order.txt"
 
 Decidable.elim : (a : Prop) -> (C : Prop) -> (a -> C) -> (Prop.Not a -> C) -> C :=
@@ -104,16 +100,16 @@ Nat.fact_pos : (n : Nat) -> Exists Nat ((j : Nat) => Eq Nat (Nat.fact n) (Nat.su
 							(Nat.Add.succ_add n (Nat.Mul (Nat.succ n) j)))));
 
 Nat.fact_dvd : (n : Nat) -> (p : Nat) ->
-	Prop.Not (Eq Nat p Nat.zero) -> Nat.Le p n -> Nat.Dvd p (Nat.fact n) :=
+	NotEq Nat p Nat.zero -> Nat.Le p n -> Nat.Dvd p (Nat.fact n) :=
 	Nat.rec_prop
 		((n : Nat) => (p : Nat) ->
-			Prop.Not (Eq Nat p Nat.zero) -> Nat.Le p n -> Nat.Dvd p (Nat.fact n))
-		((p : Nat) => (hp : Prop.Not (Eq Nat p Nat.zero)) => (hle : Nat.Le p Nat.zero) =>
+			NotEq Nat p Nat.zero -> Nat.Le p n -> Nat.Dvd p (Nat.fact n))
+		((p : Nat) => (hp : NotEq Nat p Nat.zero) => (hle : Nat.Le p Nat.zero) =>
 			False.elim (Nat.Dvd p (Nat.fact Nat.zero)) (hp (Nat.le_zero p hle)))
 		((n : Nat) =>
-			(ih : (p : Nat) -> Prop.Not (Eq Nat p Nat.zero) -> Nat.Le p n ->
+			(ih : (p : Nat) -> NotEq Nat p Nat.zero -> Nat.Le p n ->
 				Nat.Dvd p (Nat.fact n)) =>
-			(p : Nat) => (hp : Prop.Not (Eq Nat p Nat.zero)) =>
+			(p : Nat) => (hp : NotEq Nat p Nat.zero) =>
 			(hle : Nat.Le p (Nat.succ n)) =>
 			Exists.elim Nat ((j : Nat) => Eq Nat (Nat.Add p j) (Nat.succ n))
 				(Nat.Dvd p (Nat.fact (Nat.succ n))) hle

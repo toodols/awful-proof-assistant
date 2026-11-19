@@ -870,6 +870,90 @@ function check_decl(
 	}
 }
 
+// Whether a definition, followed through every global it mentions, reaches
+// `name`. Only definitions are followed: an axiom or constructor has no body
+// to hide a recursor call in.
+function reaches_global(
+	globals: Globals,
+	t: Term,
+	name: string,
+	seen: Set<string>,
+): boolean {
+	switch (t.k) {
+		case "global": {
+			if (t.name === name) return true;
+			if (seen.has(t.name)) return false;
+			seen.add(t.name);
+			const def = globals.get(t.name)?.def;
+			return def ? reaches_global(globals, def, name, seen) : false;
+		}
+		case "app":
+			return (
+				reaches_global(globals, t.fn, name, seen) ||
+				reaches_global(globals, t.arg, name, seen)
+			);
+		case "pi":
+		case "lam":
+			return (
+				reaches_global(globals, t.dom, name, seen) ||
+				reaches_global(globals, t.body, name, seen)
+			);
+		case "local":
+			return reaches_global(globals, t.ty, name, seen);
+		default:
+			return false;
+	}
+}
+
+// An iota rule may only recurse structurally: its body may apply its own
+// recursor only to one of the constructor's fields, which is strictly smaller
+// than the term being matched. Otherwise a rule like
+//   U.rec motive c U.mk := U.rec motive c U.mk
+// type-checks (the body has the right type) and sends reduction, and so the
+// checker, into an infinite loop.
+function check_structural(
+	globals: Globals,
+	rec_name: string,
+	arity: number,
+	fields: Term[],
+	root: Term,
+): void {
+	const field_ids = new Set(fields.map((f) => (f as Local).id));
+	const bad = () =>
+		new Error(
+			`${rec_name}'s rule may only apply ${rec_name} to one of the constructor's own fields, which is the only way to recurse structurally`,
+		);
+	const walk = (t: Term): void => {
+		switch (t.k) {
+			case "app": {
+				const { head, args } = unwind(t);
+				if (head.k === "global" && head.name === rec_name) {
+					const target = args[arity - 1];
+					if (!target || target.k !== "local" || !field_ids.has(target.id)) {
+						throw bad();
+					}
+				} else {
+					walk(head);
+				}
+				args.forEach(walk);
+				return;
+			}
+			case "global":
+				if (reaches_global(globals, t, rec_name, new Set())) throw bad();
+				return;
+			case "pi":
+			case "lam":
+				walk(t.dom);
+				walk(t.body);
+				return;
+			case "local":
+				walk(t.ty);
+				return;
+		}
+	};
+	walk(root);
+}
+
 function check_iota_rule(globals: Globals, stmt: Statement): void {
 	const { head, args: pat_args } = spine(stmt.pat);
 
@@ -992,6 +1076,7 @@ function check_iota_rule(globals: Globals, stmt: Statement): void {
 	if (stmt.def === null) throw new Error(`the pattern rule has no body`);
 	const rhs = elab_expr(globals, stmt.def, env);
 	check(globals, rhs, expected_ty);
+	check_structural(globals, head, rec_arity(info), field_locals, rhs);
 
 	info.rules.set(ctor_name, { locals: locals_in_order, rhs });
 }

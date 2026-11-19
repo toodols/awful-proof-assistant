@@ -1,0 +1,80 @@
+@require "equality.txt"
+
+@inductive
+Nat : Type;
+@intro(Nat)
+Nat.zero : Nat;
+@intro(Nat)
+Nat.succ : Nat -> Nat;
+@rec(Nat)
+Nat.rec :
+	(motive : Nat -> Type) ->
+	(case_zero : motive Nat.zero) ->
+	(case_succ : (n : Nat) -> motive n -> motive (Nat.succ n)) ->
+	(target : Nat) ->
+	motive target;
+
+@iota(Nat)
+Nat.rec motive case_zero case_succ Nat.zero : motive Nat.zero := case_zero;
+@iota(Nat)
+Nat.rec motive case_zero case_succ (Nat.succ n) : motive (Nat.succ n) :=
+	case_succ n (Nat.rec motive case_zero case_succ n);
+
+Nat.rec_prop :
+	(motive : Nat -> Prop) ->
+	(case_zero : motive Nat.zero) ->
+	(case_succ : (n : Nat) -> motive n -> motive (Nat.succ n)) ->
+	(target : Nat) ->
+	motive target :=
+	(motive : Nat -> Prop) =>
+	(case_zero : motive Nat.zero) =>
+	(case_succ : (n : Nat) -> motive n -> motive (Nat.succ n)) =>
+	(target : Nat) =>
+	Lift.elim
+		(motive target)
+		(Nat.rec
+			((n : Nat) => Lift (motive n))
+			(Lift.intro (motive Nat.zero) case_zero)
+			((n : Nat) =>
+				(x : Lift (motive n)) =>
+				Lift.intro
+					(motive (Nat.succ n))
+					(case_succ n (Lift.elim (motive n) x)))
+			target);
+
+Nat.cases : (P : Nat -> Prop) -> P Nat.zero -> ((n : Nat) -> P (Nat.succ n)) -> (n : Nat) -> P n :=
+	(P : Nat -> Prop) => (z : P Nat.zero) => (s : (n : Nat) -> P (Nat.succ n)) =>
+	Nat.rec_prop P z ((n : Nat) => (ih : P n) => s n);
+
+Nat.one : Nat := Nat.succ Nat.zero;
+Nat.two : Nat := Nat.succ Nat.one;
+
+// pred 0 = 0, and a - b = 0 once b reaches a: truncated, as it has to be
+// without negative numbers.
+Nat.pred : Nat -> Nat :=
+	(n : Nat) =>
+	Nat.rec ((t : Nat) => Nat) Nat.zero ((m : Nat) => (ih : Nat) => m) n;
+
+// succ is injective: pred undoes it, and pred computes.
+Nat.succ_inj : (a : Nat) -> (b : Nat) ->
+	Eq Nat (Nat.succ a) (Nat.succ b) -> Eq Nat a b :=
+	(a : Nat) => (b : Nat) => (h : Eq Nat (Nat.succ a) (Nat.succ b)) =>
+	Eq.congr Nat Nat Nat.pred (Nat.succ a) (Nat.succ b) h;
+
+// True at zero and False at every successor, so transporting True.triv along a
+// supposed equality between the two lands on False.
+Nat.is_zero : Nat -> Prop :=
+	(n : Nat) =>
+	Nat.rec ((t : Nat) => Prop) True ((m : Nat) => (ih : Prop) => False) n;
+
+Nat.zero_ne_succ : (n : Nat) -> NotEq Nat Nat.zero (Nat.succ n) :=
+	(n : Nat) => (h : Eq Nat Nat.zero (Nat.succ n)) =>
+	Eq.rec_prop Nat Nat.zero
+		((b : Nat) => (p : Eq Nat Nat.zero b) => Nat.is_zero b)
+		True.triv
+		(Nat.succ n)
+		h;
+
+Nat.succ_ne_zero : (n : Nat) -> NotEq Nat (Nat.succ n) Nat.zero :=
+	(n : Nat) => (h : Eq Nat (Nat.succ n) Nat.zero) =>
+	Nat.zero_ne_succ n (Eq.symm Nat (Nat.succ n) Nat.zero h);

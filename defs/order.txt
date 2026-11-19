@@ -1,7 +1,3 @@
-@require "prop.txt"
-@require "equality.txt"
-@require "peano.txt"
-@require "arith.txt"
 @require "double.txt"
 
 Nat.Le : Nat -> Nat -> Prop :=
@@ -97,7 +93,7 @@ Nat.le_zero : (p : Nat) -> Nat.Le p Nat.zero -> Eq Nat p Nat.zero :=
 				p
 				e);
 
-Nat.lt_one_form : (k : Nat) -> Nat.Lt (Nat.succ Nat.zero) k ->
+Nat.one_lt_form : (k : Nat) -> Nat.Lt (Nat.succ Nat.zero) k ->
 	Exists Nat ((i : Nat) => Eq Nat k (Nat.succ (Nat.succ i))) :=
 	(k : Nat) => (h : Nat.Lt (Nat.succ Nat.zero) k) =>
 	Exists.elim Nat ((i : Nat) => Eq Nat (Nat.Add Nat.two i) k)
@@ -109,12 +105,12 @@ Nat.lt_one_form : (k : Nat) -> Nat.Lt (Nat.succ Nat.zero) k ->
 					(Eq.symm Nat (Nat.Add Nat.two i) k e)
 					(Nat.Add.two_add i)));
 
-Nat.lt_one_ne_zero : (k : Nat) -> Nat.Lt (Nat.succ Nat.zero) k ->
-	Prop.Not (Eq Nat k Nat.zero) :=
+Nat.one_lt_ne_zero : (k : Nat) -> Nat.Lt (Nat.succ Nat.zero) k ->
+	NotEq Nat k Nat.zero :=
 	(k : Nat) => (h : Nat.Lt (Nat.succ Nat.zero) k) =>
 	Exists.elim Nat ((i : Nat) => Eq Nat k (Nat.succ (Nat.succ i)))
-		(Prop.Not (Eq Nat k Nat.zero))
-		(Nat.lt_one_form k h)
+		(NotEq Nat k Nat.zero)
+		(Nat.one_lt_form k h)
 		((i : Nat) => (e : Eq Nat k (Nat.succ (Nat.succ i))) =>
 			(z : Eq Nat k Nat.zero) =>
 			Nat.succ_ne_zero (Nat.succ i)
@@ -125,32 +121,32 @@ Nat.lt_one_ne_zero : (k : Nat) -> Nat.Lt (Nat.succ Nat.zero) k ->
 					(Eq.symm Nat k (Nat.succ (Nat.succ i)) e)
 					z));
 
-Nat.lt_one_cases : (x : Nat) ->
-	Prop.Not (Eq Nat x Nat.zero) ->
-	Prop.Not (Eq Nat x (Nat.succ Nat.zero)) ->
+Nat.one_lt_cases : (x : Nat) ->
+	NotEq Nat x Nat.zero ->
+	NotEq Nat x (Nat.succ Nat.zero) ->
 	Nat.Lt (Nat.succ Nat.zero) x :=
 	Nat.cases
 		((x : Nat) =>
-			Prop.Not (Eq Nat x Nat.zero) ->
-			Prop.Not (Eq Nat x (Nat.succ Nat.zero)) ->
+			NotEq Nat x Nat.zero ->
+			NotEq Nat x (Nat.succ Nat.zero) ->
 			Nat.Lt (Nat.succ Nat.zero) x)
-		((h0 : Prop.Not (Eq Nat Nat.zero Nat.zero)) =>
-			(h1 : Prop.Not (Eq Nat Nat.zero (Nat.succ Nat.zero))) =>
+		((h0 : NotEq Nat Nat.zero Nat.zero) =>
+			(h1 : NotEq Nat Nat.zero (Nat.succ Nat.zero)) =>
 			False.elim (Nat.Lt (Nat.succ Nat.zero) Nat.zero)
 				(h0 (Eq.refl Nat Nat.zero)))
 		((n : Nat) =>
 			Nat.cases
 				((m : Nat) =>
-					Prop.Not (Eq Nat (Nat.succ m) Nat.zero) ->
-					Prop.Not (Eq Nat (Nat.succ m) (Nat.succ Nat.zero)) ->
+					NotEq Nat (Nat.succ m) Nat.zero ->
+					NotEq Nat (Nat.succ m) (Nat.succ Nat.zero) ->
 					Nat.Lt (Nat.succ Nat.zero) (Nat.succ m))
-				((h0 : Prop.Not (Eq Nat (Nat.succ Nat.zero) Nat.zero)) =>
-					(h1 : Prop.Not (Eq Nat (Nat.succ Nat.zero) (Nat.succ Nat.zero))) =>
+				((h0 : NotEq Nat (Nat.succ Nat.zero) Nat.zero) =>
+					(h1 : NotEq Nat (Nat.succ Nat.zero) (Nat.succ Nat.zero)) =>
 					False.elim (Nat.Lt (Nat.succ Nat.zero) (Nat.succ Nat.zero))
 						(h1 (Eq.refl Nat (Nat.succ Nat.zero))))
 				((m : Nat) =>
-					(h0 : Prop.Not (Eq Nat (Nat.succ (Nat.succ m)) Nat.zero)) =>
-					(h1 : Prop.Not (Eq Nat (Nat.succ (Nat.succ m)) (Nat.succ Nat.zero))) =>
+					(h0 : NotEq Nat (Nat.succ (Nat.succ m)) Nat.zero) =>
+					(h1 : NotEq Nat (Nat.succ (Nat.succ m)) (Nat.succ Nat.zero)) =>
 					Exists.intro Nat
 						((j : Nat) =>
 							Eq Nat (Nat.Add Nat.two j) (Nat.succ (Nat.succ m)))

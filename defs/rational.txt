@@ -1,7 +1,5 @@
-@require "peano.txt"
 @require "integer.txt"
-@require "prop.txt"
-@require "equality.txt"
+@require "gcd.txt"
 
 // Rat is a numerator : Int and a denominator : Nat
 // Mm and a proof that numerator and denominator are coprime...
@@ -12,6 +10,20 @@ Rat : Type;
 
 @intro(Rat)
 Rat.intro : (num : Int) -> (den : Nat) -> (den_nz : NotEq Nat den Nat.zero) -> (reduced : Nat.Coprime (Int.abs_nat num) den ) -> Rat;
+
+// Rat has one constructor, so it may eliminate into Type.
+@rec(Rat)
+Rat.rec :
+	(motive : Rat -> Type) ->
+	(case_intro : (num : Int) -> (den : Nat) -> (den_nz : NotEq Nat den Nat.zero) ->
+		(reduced : Nat.Coprime (Int.abs_nat num) den) ->
+		motive (Rat.intro num den den_nz reduced)) ->
+	(target : Rat) ->
+	motive target;
+
+@iota(Rat)
+Rat.rec motive case_intro (Rat.intro num den den_nz reduced) :
+	motive (Rat.intro num den den_nz reduced) := case_intro num den den_nz reduced;
 
 one_neq_zero : NotEq Nat Nat.one Nat.zero :=
 	(h : Eq Nat Nat.one Nat.zero) =>
@@ -29,7 +41,7 @@ nat_coprime_one : (num : Nat) -> Nat.Coprime num Nat.one :=
 
 		Exists.elim Nat ((k : Nat) => Eq Nat (Nat.Mul p k) Nat.one) False hdp1
 		((k : Nat) => (ek : Eq Nat (Nat.Mul p k) Nat.one) =>
-			Nat.euclid p k Nat.zero
+			Nat.mul_ne_succ_mul p k Nat.zero
 				(Prop.And.left (Nat.Lt (Nat.succ Nat.zero) p)
 					((d : Nat) -> Nat.Dvd d p ->
 						Prop.Or (Eq Nat d (Nat.succ Nat.zero)) (Eq Nat d p))
@@ -40,3 +52,56 @@ int_coprime_one : (num : Int) -> Nat.Coprime (Int.abs_nat num) Nat.one := (num :
 
 Rat.int : (num : Int) -> Rat := (num : Int) => Rat.intro num Nat.one one_neq_zero (int_coprime_one num);
 Rat.nat : (num : Nat) -> Rat := (num : Nat) => Rat.int (Int.nat num);
+// ---- addition ----
+
+// x / g for an exact divisor g, on the numerator
+Int.div_nat : Int -> Nat -> Int :=
+	(x : Int) => (g : Nat) =>
+	Int.rec ((t : Int) => Int)
+		((m : Nat) => Int.nat (Nat.div g m))
+		((m : Nat) => Int.neg_nat (Nat.div g (Nat.succ m)))
+		x;
+
+Int.abs_div_nat : (x : Int) -> (g : Nat) ->
+	Eq Nat (Int.abs_nat (Int.div_nat x g)) (Nat.div g (Int.abs_nat x)) :=
+	(x : Int) => (g : Nat) =>
+	Int.rec_prop
+		((t : Int) => Eq Nat (Int.abs_nat (Int.div_nat t g)) (Nat.div g (Int.abs_nat t)))
+		((m : Nat) => Eq.refl Nat (Nat.div g m))
+		((m : Nat) => Int.abs_neg_nat (Nat.div g (Nat.succ m)))
+		x;
+
+
+// The fraction n / d, reduced by the greatest common divisor of |n| and d.
+Rat.mk : (n : Int) -> (d : Nat) -> NotEq Nat d Nat.zero -> Rat :=
+	(n : Int) => (d : Nat) => (hd : NotEq Nat d Nat.zero) =>
+	Rat.intro
+		(Int.div_nat n (Nat.gcd (Int.abs_nat n) d))
+		(Nat.div (Nat.gcd (Int.abs_nat n) d) d)
+		(Nat.gcd_div_ne_zero (Int.abs_nat n) d hd)
+		(Eq.subst Nat
+			(Nat.div (Nat.gcd (Int.abs_nat n) d) (Int.abs_nat n))
+			(Int.abs_nat (Int.div_nat n (Nat.gcd (Int.abs_nat n) d)))
+			((t : Nat) =>
+				Nat.Coprime t (Nat.div (Nat.gcd (Int.abs_nat n) d) d))
+			(Eq.symm Nat
+				(Int.abs_nat (Int.div_nat n (Nat.gcd (Int.abs_nat n) d)))
+				(Nat.div (Nat.gcd (Int.abs_nat n) d) (Int.abs_nat n))
+				(Int.abs_div_nat n (Nat.gcd (Int.abs_nat n) d)))
+			(Nat.gcd_coprime (Int.abs_nat n) d hd));
+
+// a/b + c/d = (a*d + c*b) / (b*d), reduced
+Rat.add : Rat -> Rat -> Rat :=
+	(x : Rat) => (y : Rat) =>
+	Rat.rec ((t : Rat) => Rat)
+		((a : Int) => (b : Nat) => (hb : NotEq Nat b Nat.zero) =>
+			(ra : Nat.Coprime (Int.abs_nat a) b) =>
+			Rat.rec ((t : Rat) => Rat)
+				((c : Int) => (d : Nat) => (hd : NotEq Nat d Nat.zero) =>
+					(rc : Nat.Coprime (Int.abs_nat c) d) =>
+					Rat.mk
+						(Int.Add (Int.mul_nat a d) (Int.mul_nat c b))
+						(Nat.Mul b d)
+						(Nat.mul_ne_zero b d hb hd))
+				y)
+		x;

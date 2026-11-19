@@ -1,6 +1,4 @@
 @require "set.txt"
-@require "prop.txt"
-@require "peano.txt"
 
 Nat.Even : Nat -> Prop :=
 	(n : Nat) =>

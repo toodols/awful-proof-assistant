@@ -1,6 +1,4 @@
-@require "prop.txt"
-@require "equality.txt"
-@require "peano.txt"
+@require "nat.txt"
 
 Set : (A : Type) -> Type := (A : Type) => A -> Prop;
 

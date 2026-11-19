@@ -1,6 +1,6 @@
 @require "prop.txt"
 @require "equality.txt"
-@require "peano.txt"
+@require "nat.txt"
 @require "list.txt"
 @require "integer.txt"
 @require "set.txt"
@@ -12,4 +12,5 @@
 @require "sqrt2.txt"
 @require "divides.txt"
 @require "primes.txt"
+@require "gcd.txt"
 @require "rational.txt"
