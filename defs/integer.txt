@@ -57,13 +57,17 @@ Int.Add : Int -> Int -> Int :=
 		((x : Nat) =>
 			Int.rec
 				((t : Int) => Int)
+        // x + y
 				((y : Nat) => Int.nat (Nat.Add x y))
+        // x - s(y)
 				((y : Nat) => Int.sub_nat_nat x (Nat.succ y))
 				b)
 		((x : Nat) =>
 			Int.rec
 				((t : Int) => Int)
+        // -s(x) + y
 				((y : Nat) => Int.sub_nat_nat y (Nat.succ x))
+        // -s(x) - s(y) = -s(s(x + y))
 				((y : Nat) => Int.neg_succ (Nat.succ (Nat.Add x y)))
 				b)
 		a;
@@ -91,3 +95,22 @@ Int.Add.add_zero_neg_succ:
 		(Int.Add (Int.nat Nat.zero) (Int.neg_succ x))
 		(Int.neg_succ x) :=
 	(x : Nat) => Eq.refl Int (Int.neg_succ x);
+
+// match x
+// our motive is an int to a nat
+// on case nat, it's just the enclosed value
+// if it's neg_succ (-(x + 1)), it's x + 1
+
+Int.abs_nat : Int -> Nat := 
+(target : Int) =>
+	Int.rec
+		(Int => Nat)
+		((x : Nat) => x)
+		((x : Nat) => Nat.succ x)
+	target;
+
+abs_zero_eq_zero : Eq Nat (Int.abs_nat (Int.nat Nat.zero)) Nat.zero :=
+	Eq.refl Nat Nat.zero;
+
+abs_one_eq_one : Eq Nat (Int.abs_nat (Int.nat Nat.one)) Nat.one :=
+	Eq.refl Nat Nat.one;

@@ -441,3 +441,7 @@ Nat.primes_infinite : (n : Nat) ->
 									(Prop.And.left (Nat.Prime p)
 										(Nat.Dvd p (Nat.succ (Nat.fact n))) hp)
 									hlt))));
+
+Nat.Coprime : Nat -> Nat -> Prop :=
+	(a : Nat) => (b : Nat) =>
+	(p : Nat) -> Nat.Prime p -> Nat.Dvd p a -> Nat.Dvd p b -> False;

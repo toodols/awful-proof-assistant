@@ -114,11 +114,17 @@ Nat.sqrt2_step : (b : Nat) -> ((m : Nat) -> Nat.Lt m b -> Nat.Sqrt2 m) -> Nat.Sq
 													((t : Nat) => Eq Nat (Nat.Mul t t) (Nat.double (Nat.Mul b b)))
 													ha h)))))))));
 
+// a^2 = 2 b^2 -> b = 0
 Nat.sqrt2_double : (a : Nat) -> (b : Nat) ->
 	Eq Nat (Nat.Mul a a) (Nat.double (Nat.Mul b b)) -> Eq Nat b Nat.zero :=
 	(a : Nat) => (b : Nat) =>
 	Nat.strong_ind Nat.Sqrt2 Nat.sqrt2_step b a;
 
+// a^2 = 2b^2 -> b^2 = 0
+// a = sqrt(2) * b^2 -> b^2 = 0 
+// wait a minute this doesn't prove sqrt(2) is irrational
+// rationals aren't even defined!!
+// god fucking dammit
 Nat.sqrt2_irrational : (a : Nat) -> (b : Nat) ->
 	Eq Nat (Nat.Mul a a) (Nat.Mul Nat.two (Nat.Mul b b)) -> Eq Nat b Nat.zero :=
 	(a : Nat) => (b : Nat) =>
@@ -131,6 +137,7 @@ Nat.sqrt2_irrational : (a : Nat) -> (b : Nat) ->
 			h
 			(Nat.Mul.two_mul (Nat.Mul b b)));
 
+// b != 0 -> a^2 != 2 * b^2
 Nat.sqrt2_irrational_ne : (a : Nat) -> (b : Nat) ->
 	Prop.Not (Eq Nat b Nat.zero) ->
 	Prop.Not (Eq Nat (Nat.Mul a a) (Nat.Mul Nat.two (Nat.Mul b b))) :=

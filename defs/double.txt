@@ -3,8 +3,6 @@
 @require "peano.txt"
 @require "arith.txt"
 
-Nat.two : Nat := Nat.succ (Nat.succ Nat.zero);
-
 Nat.double_eq : (n : Nat) -> Eq Nat (Nat.double n) (Nat.Add n n) :=
 	Nat.rec_prop
 		((n : Nat) => Eq Nat (Nat.double n) (Nat.Add n n))

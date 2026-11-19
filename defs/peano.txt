@@ -41,6 +41,9 @@ Nat.rec_prop :
 					(motive (Nat.succ n))
 					(case_succ n (Lift.elim (motive n) x)))
 			target);
+
+Nat.one : Nat := Nat.succ Nat.zero;
+Nat.two : Nat := Nat.succ Nat.one;
 	
 // Addition, by recursion on the second argument.
 Nat.Add : Nat -> Nat -> Nat := (a : Nat) => (b : Nat) =>
@@ -242,5 +245,3 @@ Nat.Mul.mul_zero : (a : Nat) -> Eq Nat (Nat.Mul a Nat.zero) Nat.zero :=
 // forall a : Nat. a * succ(b) = a + a * b
 Nat.Mul.mul_succ : (a : Nat) -> (b : Nat) -> Eq Nat (Nat.Mul a (Nat.succ b)) (Nat.Add a (Nat.Mul a b)) :=
 	(a : Nat) => (b : Nat) => Eq.refl Nat (Nat.Add a (Nat.Mul a b));
-
-

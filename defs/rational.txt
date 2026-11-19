@@ -1,0 +1,42 @@
+@require "peano.txt"
+@require "integer.txt"
+@require "prop.txt"
+@require "equality.txt"
+
+// Rat is a numerator : Int and a denominator : Nat
+// Mm and a proof that numerator and denominator are coprime...
+// And a proof that denominator is 0
+
+@inductive
+Rat : Type;
+
+@intro(Rat)
+Rat.intro : (num : Int) -> (den : Nat) -> (den_nz : Prop.Not (Eq Nat den Nat.zero)) -> (reduced : Nat.Coprime (Int.abs_nat num) den ) -> Rat;
+
+one_neq_zero : Eq Nat Nat.one Nat.zero -> False :=
+	(h : Eq Nat Nat.one Nat.zero) =>
+		Nat.zero_ne_succ
+			Nat.zero
+			(Eq.symm Nat Nat.one Nat.zero h);
+
+nat_coprime_one : (num : Nat) -> Nat.Coprime num Nat.one :=
+	// Prove if p divides both num and 1 is a contradiction, then num and 1 are coprime
+	(num : Nat) =>
+		(p : Nat) => (hp : Nat.Prime p) => (hdpn : Nat.Dvd p num) => (hdp1 : Nat.Dvd p Nat.one) => 
+
+		// p | 1 is just false, so p | n is irrelevant
+		// hdp1 expands to Exists Nat ((k : Nat) => Eq Nat (Nat.Mul p k) Nat.one);
+
+		Exists.elim Nat ((k : Nat) => Eq Nat (Nat.Mul p k) Nat.one) False hdp1
+		((k : Nat) => (ek : Eq Nat (Nat.Mul p k) Nat.one) =>
+			Nat.euclid p k Nat.zero
+				(Prop.And.left (Nat.Lt (Nat.succ Nat.zero) p)
+					((d : Nat) -> Nat.Dvd d p ->
+						Prop.Or (Eq Nat d (Nat.succ Nat.zero)) (Eq Nat d p))
+					hp)
+				ek);
+
+int_coprime_one : (num : Int) -> Nat.Coprime (Int.abs_nat num) Nat.one := (num : Int) => nat_coprime_one (Int.abs_nat num);
+
+Rat.int : (num : Int) -> Rat := (num : Int) => Rat.intro num Nat.one one_neq_zero (int_coprime_one num);
+Rat.nat : (num : Nat) -> Rat := (num : Nat) => Rat.int (Int.nat num);
