@@ -14,3 +14,5 @@
 @require "primes.txt"
 @require "gcd.txt"
 @require "rational.txt"
+@require "string.txt"
+@require "option.txt"

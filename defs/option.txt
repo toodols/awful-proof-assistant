@@ -1,0 +1,92 @@
+@require "nat.txt"
+
+// A value that may be missing: none, or some with the value.
+@inductive
+Option : Type -> Type;
+@intro(Option)
+Option.none : (El : Type) -> Option El;
+@intro(Option)
+Option.some : (El : Type) -> (value : El) -> Option El;
+
+@rec(Option)
+Option.rec :
+	(El : Type) ->
+	(motive : Option El -> Type) ->
+	(case_none : motive (Option.none El)) ->
+	(case_some : (value : El) -> motive (Option.some El value)) ->
+	(target : Option El) ->
+	motive target;
+
+@iota(Option)
+Option.rec El motive case_none case_some (Option.none El) :
+	motive (Option.none El) := case_none;
+@iota(Option)
+Option.rec El motive case_none case_some (Option.some El value) :
+	motive (Option.some El value) := case_some value;
+
+// The value inside, or a fallback when there is none.
+Option.unwrap_or : (El : Type) -> Option El -> El -> El :=
+	(El : Type) => (o : Option El) => (default : El) =>
+	Option.rec El ((t : Option El) => El) default ((value : El) => value) o;
+
+Option.map : (A : Type) -> (B : Type) -> (A -> B) -> Option A -> Option B :=
+	(A : Type) => (B : Type) => (f : A -> B) => (o : Option A) =>
+	Option.rec A ((t : Option A) => Option B)
+		(Option.none B)
+		((value : A) => Option.some B (f value))
+		o;
+
+Option.unwrap_or_some : (El : Type) -> (x : El) -> (default : El) ->
+	Eq El (Option.unwrap_or El (Option.some El x) default) x :=
+	(El : Type) => (x : El) => (default : El) => Eq.refl El x;
+
+Option.unwrap_or_none : (El : Type) -> (default : El) ->
+	Eq El (Option.unwrap_or El (Option.none El) default) default :=
+	(El : Type) => (default : El) => Eq.refl El default;
+
+Option.map_some : (A : Type) -> (B : Type) -> (f : A -> B) -> (x : A) ->
+	Eq (Option B) (Option.map A B f (Option.some A x)) (Option.some B (f x)) :=
+	(A : Type) => (B : Type) => (f : A -> B) => (x : A) =>
+	Eq.refl (Option B) (Option.some B (f x));
+
+Option.map_none : (A : Type) -> (B : Type) -> (f : A -> B) ->
+	Eq (Option B) (Option.map A B f (Option.none A)) (Option.none B) :=
+	(A : Type) => (B : Type) => (f : A -> B) =>
+	Eq.refl (Option B) (Option.none B);
+
+// some is injective: unwrap_or undoes it
+Option.some_inj : (El : Type) -> (x : El) -> (y : El) ->
+	Eq (Option El) (Option.some El x) (Option.some El y) -> Eq El x y :=
+	(El : Type) => (x : El) => (y : El) =>
+	(h : Eq (Option El) (Option.some El x) (Option.some El y)) =>
+	Eq.congr (Option El) El ((o : Option El) => Option.unwrap_or El o x)
+		(Option.some El x) (Option.some El y) h;
+
+// Monadic bind (Rust's and_then, Haskell's >>=): continue only on some.
+Option.and_then : (A : Type) -> (B : Type) -> Option A -> (A -> Option B) -> Option B :=
+	(A : Type) => (B : Type) => (o : Option A) => (f : A -> Option B) =>
+	Option.rec A ((t : Option A) => Option B) (Option.none B) f o;
+
+// Rust's or_else / Haskell's <|>: the first one that has a value.
+Option.or_else : (El : Type) -> Option El -> Option El -> Option El :=
+	(El : Type) => (a : Option El) => (b : Option El) =>
+	Option.rec El ((t : Option El) => Option El) b
+		((value : El) => Option.some El value) a;
+
+Option.and_then_some : (A : Type) -> (B : Type) -> (x : A) -> (f : A -> Option B) ->
+	Eq (Option B) (Option.and_then A B (Option.some A x) f) (f x) :=
+	(A : Type) => (B : Type) => (x : A) => (f : A -> Option B) =>
+	Eq.refl (Option B) (f x);
+
+Option.and_then_none : (A : Type) -> (B : Type) -> (f : A -> Option B) ->
+	Eq (Option B) (Option.and_then A B (Option.none A) f) (Option.none B) :=
+	(A : Type) => (B : Type) => (f : A -> Option B) =>
+	Eq.refl (Option B) (Option.none B);
+
+Option.or_else_none : (El : Type) -> (b : Option El) ->
+	Eq (Option El) (Option.or_else El (Option.none El) b) b :=
+	(El : Type) => (b : Option El) => Eq.refl (Option El) b;
+
+Option.or_else_some : (El : Type) -> (x : El) -> (b : Option El) ->
+	Eq (Option El) (Option.or_else El (Option.some El x) b) (Option.some El x) :=
+	(El : Type) => (x : El) => (b : Option El) => Eq.refl (Option El) (Option.some El x);

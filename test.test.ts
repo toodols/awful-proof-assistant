@@ -299,10 +299,14 @@ test("every axiom in the export is marked in the source", async () => {
 	);
 	const result = export_to_lean(statements);
 	// an @iota rule marks a rule of a declaration that is already counted
+	// (@lang and @debug annotate a declaration; they are not markers)
 	const marked = statements.filter(
-		(s) => s.directives.length > 0 && s.pat.type === "ident",
+		(s) =>
+			s.pat.type === "ident" &&
+			s.directives.some((d) => d.name !== "lang" && d.name !== "debug"),
 	);
-	expect(marked.length).toBe(result.axioms);
+	// (SORRY, when string literals use it, is emitted but not in the source)
+	expect(marked.length).toBe(result.axioms - (result.text.includes("SORRY") ? 1 : 0));
 
 	// of those, the ones still taken purely on trust
 	const assumed = marked.filter((s) =>
@@ -438,8 +442,10 @@ test("exports all defs to the lean export format", async () => {
 	);
 	const result = export_to_lean(statements);
 	assert_indices_well_formed(result.text);
+	// plus the SORRY axiom, which string literals' validity proofs lean on
 	expect(result.axioms + result.definitions).toBe(
-		statements.filter((s) => s.pat.type === "ident").length,
+		statements.filter((s) => s.pat.type === "ident").length +
+			(result.text.includes("SORRY") ? 1 : 0),
 	);
 	expect(result.text).toContain("#NS 0 Nat");
 });
@@ -899,8 +905,10 @@ const LANG_NAT = `
 	@lang(Nat)
 	Nat : Type;
 	@intro(Nat)
+	@lang(Nat.zero)
 	Nat.zero : Nat;
 	@intro(Nat)
+	@lang(Nat.succ)
 	Nat.succ : Nat -> Nat;
 	@rec(Nat)
 	Nat.rec :
@@ -960,7 +968,7 @@ test("a wrong @lang(Nat) numeral is still caught", async () => {
 	expect(() => check_program(new_globals(), statements)).toThrow();
 });
 
-test("@lang only marks an @inductive declaration, and only Nat", async () => {
+test("@lang marks the right declaration, and only known items", async () => {
 	const check = async (source: string) => {
 		const statements = await expand("main.txt", async () => source);
 		return () => check_program(new_globals(), statements);
@@ -970,5 +978,158 @@ test("@lang only marks an @inductive declaration, and only Nat", async () => {
 	).toThrow(/@lang\(Nat\) may only mark an @inductive declaration/);
 	expect(
 		await check(`@inductive\n@lang(Str)\nS : Type;`),
-	).toThrow(/@lang only supports Nat/);
+	).toThrow(/@lang does not know Str/);
+	expect(
+		await check(`@inductive
+N : Type;
+@intro(N)
+@lang(Nat.zero)
+N.z : N;`),
+	).toThrow(/@lang\(Nat.zero\) needs an @lang\(Nat\)/);
+});
+
+// ---------------------------------------------------------------------------
+// @lang(String)
+//
+// String literals are native too: a string defeqs the String.cons chain of
+// Char.mk's it abbreviates, and the recursor of whatever String is defined
+// from fires on one.
+// ---------------------------------------------------------------------------
+
+const LANG_STRING = LANG_NAT + `
+	@axiom
+	Eq.congr : (A : Type) -> (B : Type) -> (f : A -> B) -> (x : A) -> (y : A) -> Eq A x y -> Eq B (f x) (f y);
+	@axiom
+	Prop.Trivial : Prop;
+	@inductive
+	Char : Type;
+	Char.valid : Nat -> Prop := (n : Nat) => Prop.Trivial;
+	@intro(Char)
+	@lang(Char.mk)
+	Char.intro : (n : Nat) -> Char.valid n -> Char;
+	@inductive
+	List : Type -> Type;
+	@intro(List)
+	List.nil : (El : Type) -> List El;
+	@intro(List)
+	List.cons : (El : Type) -> (head : El) -> (tail : List El) -> List El;
+	@lang(String)
+	String : Type := List Char;
+	@lang(String.nil)
+	String.nil : String := List.nil Char;
+	@lang(String.cons)
+	String.cons : Char -> String -> String := List.cons Char;
+	@axiom
+	proof : Char.valid 97;
+`;
+
+test("a @lang(String) literal defeqs the cons chain it abbreviates", async () => {
+	const statements = await expand(
+		"main.txt",
+		async () =>
+			LANG_STRING +
+			`
+			a_lit : String := "a";
+			same : Eq String "a" (String.cons (Char.intro 97 proof) String.nil) :=
+				Eq.refl String "a";
+			empty : Eq String "" String.nil := Eq.refl String "";
+			`,
+	);
+	expect(() => check_program(new_globals(), statements)).not.toThrow();
+});
+
+test("a wrong @lang(String) literal is still caught", async () => {
+	const statements = await expand(
+		"main.txt",
+		async () =>
+			LANG_STRING +
+			`
+			bad : Eq String "a" "b" := Eq.refl String "a";
+			`,
+	);
+	expect(() => check_program(new_globals(), statements)).toThrow();
+});
+
+test("a string literal needs @lang(String) in scope", async () => {
+	const statements = await expand("main.txt", async () => LANG_NAT + `s : Nat := "a";`);
+	expect(() => check_program(new_globals(), statements)).toThrow(
+		/needs an @lang\(String\)/,
+	);
+});
+
+test("@debug prints the normalized value of a definition", async () => {
+	const statements = await expand(
+		"main.txt",
+		async () => LANG_STRING + `@debug\ntxt : String := "Hello World";\n@debug\ntwo : Nat := Nat.Add 1 1;`,
+	);
+	const seen: string[] = [];
+	check_program(new_globals(), statements, { on_debug: (n, v) => seen.push(`${n} = ${v}`) });
+	expect(seen).toEqual([`txt = "Hello World"`, `two = 2`]);
+});
+
+test("@debug needs a definition", async () => {
+	const statements = await expand("main.txt", async () => LANG_NAT + `@debug\n@axiom\nx : Nat;`);
+	expect(() => check_program(new_globals(), statements)).toThrow(/@debug needs a definition/);
+});
+
+test("@lang(Nat.add) and @lang(Nat.mul) compute natively", async () => {
+	const src = (mul_body: string) =>
+		LANG_NAT.replace("Nat.Add : Nat", "@lang(Nat.add)\n\tNat.Add : Nat") +
+		`
+		@lang(Nat.mul)
+		Nat.Mul : Nat -> Nat -> Nat := ${mul_body};
+		big : Eq Nat (Nat.Mul 123456789 987654321) 121932631112635269 :=
+			Eq.refl Nat 121932631112635269;
+		sum : Eq Nat (Nat.Add 1000000000000 1) 1000000000001 := Eq.refl Nat 1000000000001;
+		`;
+	const good = `(a : Nat) => (b : Nat) =>
+		Nat.rec ((n : Nat) => Nat) Nat.zero ((n : Nat) => (ih : Nat) => Nat.Add a ih) b`;
+	const statements = await expand("main.txt", async () => src(good));
+	expect(() => check_program(new_globals(), statements)).not.toThrow();
+	const bad = await expand("main.txt", async () => src(`(a : Nat) => (b : Nat) => a`));
+	expect(() => check_program(new_globals(), bad)).toThrow(/does not compute/);
+});
+
+test("@debug shows a string built by recursion as a string", async () => {
+	const statements = await expand(
+		"main.txt",
+		async () =>
+			LANG_STRING +
+			`
+			@axiom
+			proof2 : Char.valid 98;
+			@debug
+			hi : String := String.cons (Char.intro 97 proof) (String.cons (Char.intro 98 proof2) "cd");
+			@debug
+			none : String := List.nil Char;
+			`,
+	);
+	const seen: string[] = [];
+	check_program(new_globals(), statements, { on_debug: (n, v) => seen.push(`${n} = ${v}`) });
+	expect(seen).toEqual([`hi = "abcd"`, `none = ""`]);
+});
+
+test("@lang(Nat.ble) computes natively, and its definition is spot-checked", async () => {
+	const src = (body: string) => `
+		@inductive
+		B : Type;
+		@intro(B)
+		@lang(Bool.true)
+		B.yes : B;
+		@intro(B)
+		@lang(Bool.false)
+		B.no : B;
+		` + LANG_NAT + `
+		@lang(Nat.ble)
+		Nat.ble : Nat -> Nat -> B := ${body};
+		big : Eq B (Nat.ble 1000000 1000001) B.yes := Eq.refl B B.yes;
+		neg : Eq B (Nat.ble 1000001 1000000) B.no := Eq.refl B B.no;
+	`;
+	const good = `Nat.rec ((a : Nat) => Nat -> B) ((b : Nat) => B.yes)
+		((a : Nat) => (ih : Nat -> B) => (b : Nat) =>
+			Nat.rec ((t : Nat) => B) B.no ((c : Nat) => (r : B) => ih c) b)`;
+	const ok = await expand("main.txt", async () => src(good));
+	expect(() => check_program(new_globals(), ok)).not.toThrow();
+	const bad = await expand("main.txt", async () => src(`(a : Nat) => (b : Nat) => B.yes`));
+	expect(() => check_program(new_globals(), bad)).toThrow(/does not compute/);
 });

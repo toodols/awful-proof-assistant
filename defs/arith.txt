@@ -1,6 +1,7 @@
 @require "nat.txt"
 
 // Addition, by recursion on the second argument.
+@lang(Nat.add)
 Nat.Add : Nat -> Nat -> Nat := (a : Nat) => (b : Nat) =>
 	Nat.rec
 		((n : Nat) => Nat)
@@ -9,6 +10,7 @@ Nat.Add : Nat -> Nat -> Nat := (a : Nat) => (b : Nat) =>
 		((n : Nat) => (ih : Nat) => Nat.succ ih)
 		b;
 
+@lang(Nat.mul)
 Nat.Mul : (a : Nat) -> (b : Nat) -> Nat := (a : Nat) => (b : Nat) =>
 	Nat.rec
 		((n : Nat) => Nat)
@@ -320,3 +322,12 @@ Nat.mul_ne_zero : (b : Nat) -> (d : Nat) ->
 							z))
 				d)
 		b;
+
+// Nat.five : Nat := Nat.succ (Nat.succ (Nat.succ (Nat.succ (Nat.succ Nat.zero))));
+// Nat.ten : Nat := Nat.Mul Nat.two Nat.five;
+// Nat.one_hundred : Nat := Nat.Mul Nat.ten Nat.ten;
+// Nat.one_thousand : Nat := Nat.Mul Nat.ten Nat.one_hundred;
+// Nat.one_million : Nat := Nat.Mul Nat.one_thousand Nat.one_thousand;
+// Nat.one_billion : Nat := Nat.Mul Nat.one_thousand Nat.one_million;
+// force_compute : Eq Nat Nat.one_billion Nat.one_billion :=
+//  	Eq.refl Nat Nat.one_billion;

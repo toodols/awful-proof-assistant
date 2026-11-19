@@ -56,7 +56,7 @@ export function lex_all(source: string): Token[] {
 		if (c === '"') {
 			const start = i;
 			i++;
-			while (i < n && source[i] !== '"') i++;
+			while (i < n && source[i] !== '"') i += source[i] === "\\" ? 2 : 1;
 			i++; // closing quote (or EOF)
 			tokens.push({ type: "string", raw: source.slice(start, i) });
 			continue;
@@ -111,6 +111,8 @@ export type Expr =
 	| { type: "ident"; ident: string }
 	// a bare numeral, e.g. `3` - sugar for a @lang(Nat) type's native value
 	| { type: "nat_lit"; value: bigint }
+	// a quoted string, e.g. `"hi"` - sugar for a @lang(String) type's native value
+	| { type: "str_lit"; value: string }
 	| { type: "application"; fun: Expr; value: Expr }
 	| { type: "lambda"; head: Expr | Binding; tail: Expr }
 	| { type: "pi"; head: Expr | Binding; tail: Expr }
@@ -205,7 +207,7 @@ export function parse(source: string): ParseResult {
 
 	function parse_app(): Expr {
 		let e = parse_atom();
-		while (at("ident") || at("(")) {
+		while (at("ident") || at("(") || at("string")) {
 			const value = parse_atom();
 			e = { type: "application", fun: e, value };
 		}
@@ -220,6 +222,7 @@ export function parse(source: string): ParseResult {
 			if (DIGITS.test(raw)) return { type: "nat_lit", value: BigInt(raw) };
 			return { type: "ident", ident: raw };
 		}
+		if (at("string")) return { type: "str_lit", value: unescape(advance().raw) };
 		if (at("(")) {
 			advance();
 			const e = parse_expr();
@@ -230,6 +233,12 @@ export function parse(source: string): ParseResult {
 		throw new Error(
 			`expected an expression but found ${t ? `'${t.raw}'` : "end of input"}`,
 		);
+	}
+
+	const ESCAPES: Record<string, string> = { n: "\n", t: "\t", r: "\r" };
+	function unescape(raw: string): string {
+		if (raw.length < 2 || !raw.endsWith('"')) throw new Error("unterminated string");
+		return raw.slice(1, -1).replace(/\\(.)/gs, (_, c: string) => ESCAPES[c] ?? c);
 	}
 
 	function unquote(raw: string): string {

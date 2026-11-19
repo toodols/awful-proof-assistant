@@ -1,0 +1,36 @@
+@require "prop.txt"
+@require "equality.txt"
+
+@inductive
+Bool : Type;
+@intro(Bool)
+@lang(Bool.true)
+Bool.true : Bool;
+@intro(Bool)
+@lang(Bool.false)
+Bool.false : Bool;
+
+@rec(Bool)
+Bool.rec :
+	(motive : Bool -> Type) ->
+	(case_true : motive Bool.true) ->
+	(case_false : motive Bool.false) ->
+	(target : Bool) ->
+	motive target;
+
+@iota(Bool)
+Bool.rec motive case_true case_false Bool.true : motive Bool.true := case_true;
+@iota(Bool)
+Bool.rec motive case_true case_false Bool.false : motive Bool.false := case_false;
+
+// true holds, false does not
+Bool.Is : Bool -> Prop :=
+	(b : Bool) => Bool.rec ((t : Bool) => Prop) (False -> False) False b;
+
+Bool.true_ne_false : Eq Bool Bool.true Bool.false -> False :=
+	(e : Eq Bool Bool.true Bool.false) =>
+	Eq.subst Bool Bool.true Bool.false Bool.Is e ((h : False) => h);
+
+Bool.false_ne_true : Eq Bool Bool.false Bool.true -> False :=
+	(e : Eq Bool Bool.false Bool.true) =>
+	Bool.true_ne_false (Eq.symm Bool Bool.false Bool.true e);

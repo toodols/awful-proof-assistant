@@ -1,10 +1,13 @@
 @require "equality.txt"
 
 @inductive
+@lang(Nat)
 Nat : Type;
 @intro(Nat)
+@lang(Nat.zero)
 Nat.zero : Nat;
 @intro(Nat)
+@lang(Nat.succ)
 Nat.succ : Nat -> Nat;
 @rec(Nat)
 Nat.rec :
