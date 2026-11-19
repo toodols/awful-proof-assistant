@@ -96,6 +96,8 @@ const SORT_TYPE: Core = { k: "sort", level: { k: "num", n: 1 } };
 const SORT_TYPE1: Core = { k: "sort", level: { k: "num", n: 2 } };
 
 const SORRY = "SORRY";
+// how a program spells it
+const SORRY_SRC = "SORRY";
 
 // ---------------------------------------------------------------------------
 // Output formats
@@ -748,7 +750,7 @@ function resolve(env: Env, expr: Expr, bound: (string | null)[]): Core {
 		if (expr.ident === "Type") return SORT_TYPE;
 		if (expr.ident === "Type1") return SORT_TYPE1;
 		if (expr.ident === "Prop") return SORT_PROP;
-		if (expr.ident === SORRY) {
+		if (expr.ident === SORRY_SRC) {
 			// a bare SORRY with nothing applied; default to the Type level
 			env.uses_sorry = true;
 			return { k: "const", name: SORRY, levels: [{ k: "num", n: 1 }] };
@@ -774,8 +776,8 @@ function resolve(env: Env, expr: Expr, bound: (string | null)[]): Core {
 		// argument has to be read off whatever it is applied to.
 		if (
 			expr.fun.type === "ident" &&
-			expr.fun.ident === SORRY &&
-			!bound.includes(SORRY)
+			expr.fun.ident === SORRY_SRC &&
+			!bound.includes(SORRY_SRC)
 		) {
 			env.uses_sorry = true;
 			return {
@@ -1278,7 +1280,7 @@ function lower_rules(
 
 if (import.meta.main) {
 	const argv = process.argv.slice(2);
-	let entry = "./defs/main.txt";
+	let entry = "./cic/main.txt";
 	let out: string | null = null;
 	let header: string | undefined;
 	let format: Format | null = null;

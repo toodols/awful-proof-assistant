@@ -1,0 +1,29 @@
+@require "constructions.txt"
+
+linear : Set -> Prop :=
+        (x : Set) => (a : Set) -> (b : Set) -> mem a x -> mem b x ->
+                or (mem a b) (or (eq Set a b) (mem b a));
+
+zero : Set := empty;
+
+one : Set := succ zero;
+
+two : Set := succ one;
+
+ordinal : Set -> Prop :=
+	(x : Set) => and (transitive x) (linear x);
+
+natural : Set -> Prop :=
+	(n : Set) => and (ordinal n)
+		((m : Set) -> or (mem m n) (eq Set m n) ->
+			or (eq Set m zero) (exists Set ((p : Set) => eq Set m (succ p))));
+
+is_omega : Set -> Prop :=
+	(w : Set) => (x : Set) -> iff (mem x w) (natural x);
+
+zero_ordinal : ordinal zero :=
+	and.intro (transitive zero) (linear zero)
+		((y : Set) => (m : mem y zero) =>
+			false.elim (subset y zero) (not_mem_empty y m))
+		((a : Set) => (b : Set) => (ma : mem a zero) => (mb : mem b zero) =>
+			false.elim (or (mem a b) (or (eq Set a b) (mem b a))) (not_mem_empty a ma));

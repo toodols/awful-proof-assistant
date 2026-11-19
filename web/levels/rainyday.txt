@@ -1,0 +1,24 @@
+// Two kinds of weather, two plans, one conclusion.
+Or : Prop -> Prop -> Prop;
+Or.inl : (a : Prop) -> (b : Prop) -> a -> Or a b;
+Or.inr : (a : Prop) -> (b : Prop) -> b -> Or a b;
+// Or.elim: if a gives you c, and b gives you c, then (a or b) gives you c
+Or.elim : (a : Prop) -> (b : Prop) -> (c : Prop) -> Or a b -> (a -> c) -> (b -> c) -> c;
+
+Sunny : Prop;
+Rainy : Prop;
+Picnic : Prop;
+Movie : Prop;
+Fun : Prop;
+
+forecast : Or Sunny Rainy;
+sunny_means_picnic : Sunny -> Picnic;
+rainy_means_movie : Rainy -> Movie;
+picnic_is_fun : Picnic -> Fun;
+movie_is_fun : Movie -> Fun;
+
+// We don't know which day it is, but we can plan for both.
+// Sunny: picnic, then fun. Rainy: movie, then fun.
+fun_either_way : Fun := Or.elim Sunny Rainy Fun forecast
+	((s : Sunny) => <INPUT>)
+	((r : Rainy) => <INPUT>);

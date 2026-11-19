@@ -119,13 +119,13 @@ Char.valid_replacement : Char.valid 65533 :=
 		(Nat.Lt 65533 1114112)
 		(Prop.Not (Prop.And (Nat.Le 55296 65533) (Nat.Le 65533 57343)))
 		(Exists.intro Nat
-			((k : Nat) => Eq Nat (Nat.Add (Nat.succ 65533) k) 1114112)
+			((k : Nat) => Eq Nat (Nat.add (Nat.succ 65533) k) 1114112)
 			1048578
 			(Eq.refl Nat 1114112))
 		((h : Prop.And (Nat.Le 55296 65533) (Nat.Le 65533 57343)) =>
 			Nat.lt_not_le 57343 65533
 				(Exists.intro Nat
-					((k : Nat) => Eq Nat (Nat.Add (Nat.succ 57343) k) 65533)
+					((k : Nat) => Eq Nat (Nat.add (Nat.succ 57343) k) 65533)
 					8189
 					(Eq.refl Nat 65533))
 				(Prop.And.right (Nat.Le 55296 65533) (Nat.Le 65533 57343) h));
@@ -161,4 +161,4 @@ String.nil : String := List.nil Char;
 String.cons : Char -> String -> String := List.cons Char;
 
 @debug
-hi : String := List.Join Char "Hello" (String.cons (Char.of_nat 32) String.nil);
+hi : String := List.join Char "Hello" (String.cons (Char.of_nat 32) String.nil);

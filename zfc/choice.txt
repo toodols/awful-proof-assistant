@@ -1,0 +1,11 @@
+@require "set.txt"
+
+@axiom
+choice : (a : Set) ->
+	((x : Set) -> mem x a -> exists Set ((y : Set) => mem y x)) ->
+	((x : Set) -> (y : Set) -> (z : Set) ->
+		mem x a -> mem y a -> mem z x -> mem z y -> eq Set x y) ->
+	exists Set ((c : Set) => (x : Set) -> mem x a ->
+		exists Set ((z : Set) =>
+			and (and (mem z x) (mem z c))
+				((w : Set) -> and (mem w x) (mem w c) -> eq Set w z)));

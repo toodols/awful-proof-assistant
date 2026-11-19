@@ -6,7 +6,7 @@ import { export_to_lean } from "./lean_export";
 
 test("all defs check", async () => {
 	const statements = await expand(
-		"./defs/main.txt",
+		"./cic/main.txt",
 		async (path) => await Bun.file(path).text(),
 	);
 	const globals = new_globals();
@@ -294,7 +294,7 @@ test("large elimination is restricted", async () => {
 // which is the one hole in this.
 test("every axiom in the export is marked in the source", async () => {
 	const statements = await expand(
-		"./defs/main.txt",
+		"./cic/main.txt",
 		async (path) => await Bun.file(path).text(),
 	);
 	const result = export_to_lean(statements);
@@ -362,7 +362,7 @@ test("recursors compute", async () => {
 		Eq : ( A : Type ) -> ( a : A ) -> ( b : A ) -> Prop;
 		@axiom
 		Eq.refl : ( A : Type ) -> ( x : A ) -> Eq A x x;
-		Nat.Add : Nat -> Nat -> Nat := (a : Nat) => (b : Nat) =>
+		Nat.add : Nat -> Nat -> Nat := (a : Nat) => (b : Nat) =>
 			Nat.rec ((n : Nat) => Nat) a ((n : Nat) => (ih : Nat) => Nat.succ ih) b;
 	`;
 	const check = async (extra: string) => {
@@ -373,7 +373,7 @@ test("recursors compute", async () => {
 	// x + 0 = x, by reflexivity rather than by assumption
 	expect(
 		await check(`
-		add_zero : (x : Nat) -> Eq Nat (Nat.Add x Nat.zero) x :=
+		add_zero : (x : Nat) -> Eq Nat (Nat.add x Nat.zero) x :=
 			(x : Nat) => Eq.refl Nat x;
 		`),
 	).not.toThrow();
@@ -383,7 +383,7 @@ test("recursors compute", async () => {
 		await check(`
 		two : Nat := Nat.succ (Nat.succ Nat.zero);
 		four : Nat := Nat.succ (Nat.succ (Nat.succ (Nat.succ Nat.zero)));
-		sum : Eq Nat (Nat.Add two two) four := Eq.refl Nat four;
+		sum : Eq Nat (Nat.add two two) four := Eq.refl Nat four;
 		`),
 	).not.toThrow();
 
@@ -392,18 +392,18 @@ test("recursors compute", async () => {
 		await check(`
 		two : Nat := Nat.succ (Nat.succ Nat.zero);
 		three : Nat := Nat.succ (Nat.succ (Nat.succ Nat.zero));
-		sum : Eq Nat (Nat.Add two two) three := Eq.refl Nat three;
+		sum : Eq Nat (Nat.add two two) three := Eq.refl Nat three;
 		`),
 	).toThrow();
 });
 
 test("parse_directive", () => {
 	const source = `
-	@require "prop"
+	@require "Prop"
 	`;
 
 	const result = parse(source);
-	expect(result.dependencies).toEqual(["prop"]);
+	expect(result.dependencies).toEqual(["Prop"]);
 });
 
 // Every `<idx> #KIND ...` line must introduce a fresh index and may only
@@ -437,7 +437,7 @@ function assert_indices_well_formed(text: string) {
 
 test("exports all defs to the lean export format", async () => {
 	const statements = await expand(
-		"./defs/main.txt",
+		"./cic/main.txt",
 		async (path) => await Bun.file(path).text(),
 	);
 	const result = export_to_lean(statements);
@@ -455,7 +455,7 @@ test("exports all defs to the lean export format", async () => {
 // the anonymous name and the universe zero, and expressions start at 0.
 test("exports all defs to the json export format", async () => {
 	const statements = await expand(
-		"./defs/main.txt",
+		"./cic/main.txt",
 		async (path) => await Bun.file(path).text(),
 	);
 	const result = export_to_lean(statements, { format: "json" });
@@ -926,7 +926,7 @@ const LANG_NAT = `
 	Eq : (A : Type) -> A -> A -> Prop;
 	@axiom
 	Eq.refl : (A : Type) -> (x : A) -> Eq A x x;
-	Nat.Add : Nat -> Nat -> Nat := (a : Nat) => (b : Nat) =>
+	Nat.add : Nat -> Nat -> Nat := (a : Nat) => (b : Nat) =>
 		Nat.rec ((n : Nat) => Nat) a ((n : Nat) => (ih : Nat) => Nat.succ ih) b;
 `;
 
@@ -950,7 +950,7 @@ test("a recursor fires on a @lang(Nat) numeral", async () => {
 		async () =>
 			LANG_NAT +
 			`
-			sum : Eq Nat (Nat.Add 2 3) 5 := Eq.refl Nat 5;
+			sum : Eq Nat (Nat.add 2 3) 5 := Eq.refl Nat 5;
 			`,
 	);
 	expect(() => check_program(new_globals(), statements)).not.toThrow();
@@ -1060,7 +1060,7 @@ test("a string literal needs @lang(String) in scope", async () => {
 test("@debug prints the normalized value of a definition", async () => {
 	const statements = await expand(
 		"main.txt",
-		async () => LANG_STRING + `@debug\ntxt : String := "Hello World";\n@debug\ntwo : Nat := Nat.Add 1 1;`,
+		async () => LANG_STRING + `@debug\ntxt : String := "Hello World";\n@debug\ntwo : Nat := Nat.add 1 1;`,
 	);
 	const seen: string[] = [];
 	check_program(new_globals(), statements, { on_debug: (n, v) => seen.push(`${n} = ${v}`) });
@@ -1074,16 +1074,16 @@ test("@debug needs a definition", async () => {
 
 test("@lang(Nat.add) and @lang(Nat.mul) compute natively", async () => {
 	const src = (mul_body: string) =>
-		LANG_NAT.replace("Nat.Add : Nat", "@lang(Nat.add)\n\tNat.Add : Nat") +
+		LANG_NAT.replace("Nat.add : Nat", "@lang(Nat.add)\n\tNat.add : Nat") +
 		`
 		@lang(Nat.mul)
-		Nat.Mul : Nat -> Nat -> Nat := ${mul_body};
-		big : Eq Nat (Nat.Mul 123456789 987654321) 121932631112635269 :=
+		Nat.mul : Nat -> Nat -> Nat := ${mul_body};
+		big : Eq Nat (Nat.mul 123456789 987654321) 121932631112635269 :=
 			Eq.refl Nat 121932631112635269;
-		sum : Eq Nat (Nat.Add 1000000000000 1) 1000000000001 := Eq.refl Nat 1000000000001;
+		sum : Eq Nat (Nat.add 1000000000000 1) 1000000000001 := Eq.refl Nat 1000000000001;
 		`;
 	const good = `(a : Nat) => (b : Nat) =>
-		Nat.rec ((n : Nat) => Nat) Nat.zero ((n : Nat) => (ih : Nat) => Nat.Add a ih) b`;
+		Nat.rec ((n : Nat) => Nat) Nat.zero ((n : Nat) => (ih : Nat) => Nat.add a ih) b`;
 	const statements = await expand("main.txt", async () => src(good));
 	expect(() => check_program(new_globals(), statements)).not.toThrow();
 	const bad = await expand("main.txt", async () => src(`(a : Nat) => (b : Nat) => a`));

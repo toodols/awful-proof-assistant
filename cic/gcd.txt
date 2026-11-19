@@ -26,25 +26,25 @@ Nat.ite_cases : (P : Prop) -> (x : Nat) -> (y : Nat) -> (Q : Nat -> Prop) ->
 
 Nat.one_dvd : (n : Nat) -> Nat.Dvd Nat.one n :=
 	(n : Nat) =>
-	Exists.intro Nat ((k : Nat) => Eq Nat (Nat.Mul Nat.one k) n) n
-		(Nat.Mul.one_mul n);
+	Exists.intro Nat ((k : Nat) => Eq Nat (Nat.mul Nat.one k) n) n
+		(Nat.mul.one_mul n);
 
 // j <= succ m is either j = succ m or j <= m
 Nat.le_succ_cases : (j : Nat) -> (m : Nat) -> Nat.Le j (Nat.succ m) ->
 	Prop.Or (Eq Nat j (Nat.succ m)) (Nat.Le j m) :=
 	(j : Nat) => (m : Nat) => (h : Nat.Le j (Nat.succ m)) =>
-	Exists.elim Nat ((r : Nat) => Eq Nat (Nat.Add j r) (Nat.succ m))
+	Exists.elim Nat ((r : Nat) => Eq Nat (Nat.add j r) (Nat.succ m))
 		(Prop.Or (Eq Nat j (Nat.succ m)) (Nat.Le j m)) h
-		((r : Nat) => (e : Eq Nat (Nat.Add j r) (Nat.succ m)) =>
+		((r : Nat) => (e : Eq Nat (Nat.add j r) (Nat.succ m)) =>
 			Nat.cases
-				((s : Nat) => Eq Nat (Nat.Add j s) (Nat.succ m) ->
+				((s : Nat) => Eq Nat (Nat.add j s) (Nat.succ m) ->
 					Prop.Or (Eq Nat j (Nat.succ m)) (Nat.Le j m))
-				((e0 : Eq Nat (Nat.Add j Nat.zero) (Nat.succ m)) =>
+				((e0 : Eq Nat (Nat.add j Nat.zero) (Nat.succ m)) =>
 					Prop.Or.inl (Eq Nat j (Nat.succ m)) (Nat.Le j m) e0)
-				((s : Nat) => (e1 : Eq Nat (Nat.succ (Nat.Add j s)) (Nat.succ m)) =>
+				((s : Nat) => (e1 : Eq Nat (Nat.succ (Nat.add j s)) (Nat.succ m)) =>
 					Prop.Or.inr (Eq Nat j (Nat.succ m)) (Nat.Le j m)
-						(Exists.intro Nat ((t : Nat) => Eq Nat (Nat.Add j t) m) s
-							(Nat.succ_inj (Nat.Add j s) m e1)))
+						(Exists.intro Nat ((t : Nat) => Eq Nat (Nat.add j t) m) s
+							(Nat.succ_inj (Nat.add j s) m e1)))
 				r
 				e);
 
@@ -143,65 +143,65 @@ Nat.div_search : Nat -> Nat -> Nat -> Nat :=
 	Nat.rec ((t : Nat) => Nat)
 		Nat.zero
 		((n : Nat) => (ih : Nat) =>
-			Nat.ite (Eq Nat (Nat.Mul g (Nat.succ n)) a) (Nat.succ n) ih)
+			Nat.ite (Eq Nat (Nat.mul g (Nat.succ n)) a) (Nat.succ n) ih)
 		m;
 
 Nat.div : Nat -> Nat -> Nat :=
 	(g : Nat) => (a : Nat) => Nat.div_search g a a;
 
 Nat.div_search_spec : (g : Nat) -> (a : Nat) -> (m : Nat) -> (k : Nat) ->
-	Nat.Le k m -> Eq Nat (Nat.Mul g k) a ->
-	Eq Nat (Nat.Mul g (Nat.div_search g a m)) a :=
+	Nat.Le k m -> Eq Nat (Nat.mul g k) a ->
+	Eq Nat (Nat.mul g (Nat.div_search g a m)) a :=
 	(g : Nat) => (a : Nat) =>
 	Nat.rec_prop
-		((m : Nat) => (k : Nat) -> Nat.Le k m -> Eq Nat (Nat.Mul g k) a ->
-			Eq Nat (Nat.Mul g (Nat.div_search g a m)) a)
-		((k : Nat) => (hle : Nat.Le k Nat.zero) => (hk : Eq Nat (Nat.Mul g k) a) =>
-			Eq.subst Nat k Nat.zero ((t : Nat) => Eq Nat (Nat.Mul g t) a)
+		((m : Nat) => (k : Nat) -> Nat.Le k m -> Eq Nat (Nat.mul g k) a ->
+			Eq Nat (Nat.mul g (Nat.div_search g a m)) a)
+		((k : Nat) => (hle : Nat.Le k Nat.zero) => (hk : Eq Nat (Nat.mul g k) a) =>
+			Eq.subst Nat k Nat.zero ((t : Nat) => Eq Nat (Nat.mul g t) a)
 				(Nat.le_zero k hle) hk)
 		((n : Nat) =>
-			(ih : (k : Nat) -> Nat.Le k n -> Eq Nat (Nat.Mul g k) a ->
-				Eq Nat (Nat.Mul g (Nat.div_search g a n)) a) =>
-			(k : Nat) => (hle : Nat.Le k (Nat.succ n)) => (hk : Eq Nat (Nat.Mul g k) a) =>
+			(ih : (k : Nat) -> Nat.Le k n -> Eq Nat (Nat.mul g k) a ->
+				Eq Nat (Nat.mul g (Nat.div_search g a n)) a) =>
+			(k : Nat) => (hle : Nat.Le k (Nat.succ n)) => (hk : Eq Nat (Nat.mul g k) a) =>
 			Nat.ite_cases
-				(Eq Nat (Nat.Mul g (Nat.succ n)) a)
+				(Eq Nat (Nat.mul g (Nat.succ n)) a)
 				(Nat.succ n)
 				(Nat.div_search g a n)
-				((t : Nat) => Eq Nat (Nat.Mul g t) a)
-				((h : Eq Nat (Nat.Mul g (Nat.succ n)) a) => h)
-				((h : NotEq Nat (Nat.Mul g (Nat.succ n)) a) =>
+				((t : Nat) => Eq Nat (Nat.mul g t) a)
+				((h : Eq Nat (Nat.mul g (Nat.succ n)) a) => h)
+				((h : NotEq Nat (Nat.mul g (Nat.succ n)) a) =>
 					Prop.Or.elim (Eq Nat k (Nat.succ n)) (Nat.Le k n)
-						(Eq Nat (Nat.Mul g (Nat.div_search g a n)) a)
+						(Eq Nat (Nat.mul g (Nat.div_search g a n)) a)
 						(Nat.le_succ_cases k n hle)
 						((e : Eq Nat k (Nat.succ n)) =>
-							False.elim (Eq Nat (Nat.Mul g (Nat.div_search g a n)) a)
+							False.elim (Eq Nat (Nat.mul g (Nat.div_search g a n)) a)
 								(h (Eq.subst Nat k (Nat.succ n)
-									((t : Nat) => Eq Nat (Nat.Mul g t) a) e hk)))
+									((t : Nat) => Eq Nat (Nat.mul g t) a) e hk)))
 						((hn : Nat.Le k n) => ih k hn hk)));
 
 // k <= g * k once g is positive
-Nat.le_mul_pos : (j : Nat) -> (k : Nat) -> Nat.Le k (Nat.Mul (Nat.succ j) k) :=
+Nat.le_mul_pos : (j : Nat) -> (k : Nat) -> Nat.Le k (Nat.mul (Nat.succ j) k) :=
 	(j : Nat) => (k : Nat) =>
 	Exists.intro Nat
-		((r : Nat) => Eq Nat (Nat.Add k r) (Nat.Mul (Nat.succ j) k))
-		(Nat.Mul j k)
+		((r : Nat) => Eq Nat (Nat.add k r) (Nat.mul (Nat.succ j) k))
+		(Nat.mul j k)
 		(Eq.trans Nat
-			(Nat.Add k (Nat.Mul j k))
-			(Nat.Add (Nat.Mul j k) k)
-			(Nat.Mul (Nat.succ j) k)
-			(Nat.Add.add_comm k (Nat.Mul j k))
-			(Eq.symm Nat (Nat.Mul (Nat.succ j) k) (Nat.Add (Nat.Mul j k) k)
-				(Nat.Mul.succ_mul j k)));
+			(Nat.add k (Nat.mul j k))
+			(Nat.add (Nat.mul j k) k)
+			(Nat.mul (Nat.succ j) k)
+			(Nat.add.add_comm k (Nat.mul j k))
+			(Eq.symm Nat (Nat.mul (Nat.succ j) k) (Nat.add (Nat.mul j k) k)
+				(Nat.mul.succ_mul j k)));
 
 // g | a with g positive: g * (a / g) = a
 Nat.div_spec : (j : Nat) -> (a : Nat) -> Nat.Dvd (Nat.succ j) a ->
-	Eq Nat (Nat.Mul (Nat.succ j) (Nat.div (Nat.succ j) a)) a :=
+	Eq Nat (Nat.mul (Nat.succ j) (Nat.div (Nat.succ j) a)) a :=
 	(j : Nat) => (a : Nat) => (h : Nat.Dvd (Nat.succ j) a) =>
-	Exists.elim Nat ((k : Nat) => Eq Nat (Nat.Mul (Nat.succ j) k) a)
-		(Eq Nat (Nat.Mul (Nat.succ j) (Nat.div (Nat.succ j) a)) a) h
-		((k : Nat) => (hk : Eq Nat (Nat.Mul (Nat.succ j) k) a) =>
+	Exists.elim Nat ((k : Nat) => Eq Nat (Nat.mul (Nat.succ j) k) a)
+		(Eq Nat (Nat.mul (Nat.succ j) (Nat.div (Nat.succ j) a)) a) h
+		((k : Nat) => (hk : Eq Nat (Nat.mul (Nat.succ j) k) a) =>
 			Nat.div_search_spec (Nat.succ j) a a k
-				(Eq.subst Nat (Nat.Mul (Nat.succ j) k) a ((t : Nat) => Nat.Le k t)
+				(Eq.subst Nat (Nat.mul (Nat.succ j) k) a ((t : Nat) => Nat.Le k t)
 					hk (Nat.le_mul_pos j k))
 				hk);
 
@@ -211,16 +211,16 @@ Nat.div_spec : (j : Nat) -> (a : Nat) -> Nat.Dvd (Nat.succ j) a ->
 Nat.dvd_le : (x : Nat) -> (n : Nat) -> Nat.Dvd x n ->
 	NotEq Nat n Nat.zero -> Nat.Le x n :=
 	(x : Nat) => (n : Nat) => (h : Nat.Dvd x n) => (hn : NotEq Nat n Nat.zero) =>
-	Exists.elim Nat ((v : Nat) => Eq Nat (Nat.Mul x v) n) (Nat.Le x n) h
-		((v : Nat) => (e : Eq Nat (Nat.Mul x v) n) =>
+	Exists.elim Nat ((v : Nat) => Eq Nat (Nat.mul x v) n) (Nat.Le x n) h
+		((v : Nat) => (e : Eq Nat (Nat.mul x v) n) =>
 			Nat.cases
-				((s : Nat) => Eq Nat (Nat.Mul x s) n -> Nat.Le x n)
-				((e0 : Eq Nat (Nat.Mul x Nat.zero) n) =>
+				((s : Nat) => Eq Nat (Nat.mul x s) n -> Nat.Le x n)
+				((e0 : Eq Nat (Nat.mul x Nat.zero) n) =>
 					False.elim (Nat.Le x n)
 						(hn (Eq.symm Nat Nat.zero n e0)))
-				((s : Nat) => (e1 : Eq Nat (Nat.Add x (Nat.Mul x s)) n) =>
-					Exists.intro Nat ((r : Nat) => Eq Nat (Nat.Add x r) n)
-						(Nat.Mul x s) e1)
+				((s : Nat) => (e1 : Eq Nat (Nat.add x (Nat.mul x s)) n) =>
+					Exists.intro Nat ((r : Nat) => Eq Nat (Nat.add x r) n)
+						(Nat.mul x s) e1)
 				v
 				e);
 
@@ -229,63 +229,63 @@ Nat.dvd_ne_zero : (x : Nat) -> (n : Nat) -> Nat.Dvd x n ->
 	NotEq Nat n Nat.zero -> NotEq Nat x Nat.zero :=
 	(x : Nat) => (n : Nat) => (h : Nat.Dvd x n) => (hn : NotEq Nat n Nat.zero) =>
 	(z : Eq Nat x Nat.zero) =>
-	Exists.elim Nat ((v : Nat) => Eq Nat (Nat.Mul x v) n) False h
-		((v : Nat) => (e : Eq Nat (Nat.Mul x v) n) =>
-			hn (Eq.trans Nat n (Nat.Mul x v) Nat.zero
-				(Eq.symm Nat (Nat.Mul x v) n e)
-				(Eq.trans Nat (Nat.Mul x v) (Nat.Mul Nat.zero v) Nat.zero
-					(Eq.congr Nat Nat ((t : Nat) => Nat.Mul t v) x Nat.zero z)
-					(Nat.Mul.zero_mul v))));
+	Exists.elim Nat ((v : Nat) => Eq Nat (Nat.mul x v) n) False h
+		((v : Nat) => (e : Eq Nat (Nat.mul x v) n) =>
+			hn (Eq.trans Nat n (Nat.mul x v) Nat.zero
+				(Eq.symm Nat (Nat.mul x v) n e)
+				(Eq.trans Nat (Nat.mul x v) (Nat.mul Nat.zero v) Nat.zero
+					(Eq.congr Nat Nat ((t : Nat) => Nat.mul t v) x Nat.zero z)
+					(Nat.mul.zero_mul v))));
 
 // g * p <= g is impossible for g >= 1 and p >= 2
 Nat.not_le_mul_two : (j : Nat) -> (i : Nat) ->
-	Nat.Le (Nat.Mul (Nat.succ j) (Nat.succ (Nat.succ i))) (Nat.succ j) -> False :=
+	Nat.Le (Nat.mul (Nat.succ j) (Nat.succ (Nat.succ i))) (Nat.succ j) -> False :=
 	(j : Nat) => (i : Nat) =>
-	(h : Nat.Le (Nat.Mul (Nat.succ j) (Nat.succ (Nat.succ i))) (Nat.succ j)) =>
+	(h : Nat.Le (Nat.mul (Nat.succ j) (Nat.succ (Nat.succ i))) (Nat.succ j)) =>
 	Exists.elim Nat
 		((r : Nat) => Eq Nat
-			(Nat.Add (Nat.Mul (Nat.succ j) (Nat.succ (Nat.succ i))) r) (Nat.succ j))
+			(Nat.add (Nat.mul (Nat.succ j) (Nat.succ (Nat.succ i))) r) (Nat.succ j))
 		False h
 		((r : Nat) =>
 			(e : Eq Nat
-				(Nat.Add (Nat.Mul (Nat.succ j) (Nat.succ (Nat.succ i))) r) (Nat.succ j)) =>
+				(Nat.add (Nat.mul (Nat.succ j) (Nat.succ (Nat.succ i))) r) (Nat.succ j)) =>
 			Nat.succ_ne_zero
-				(Nat.Add (Nat.Add j (Nat.Mul (Nat.succ j) i)) r)
+				(Nat.add (Nat.add j (Nat.mul (Nat.succ j) i)) r)
 				(Eq.trans Nat
-					(Nat.succ (Nat.Add (Nat.Add j (Nat.Mul (Nat.succ j) i)) r))
-					(Nat.Add
-						(Nat.Add (Nat.succ j) (Nat.Mul (Nat.succ j) i)) r)
+					(Nat.succ (Nat.add (Nat.add j (Nat.mul (Nat.succ j) i)) r))
+					(Nat.add
+						(Nat.add (Nat.succ j) (Nat.mul (Nat.succ j) i)) r)
 					Nat.zero
 					(Eq.symm Nat
-						(Nat.Add (Nat.Add (Nat.succ j) (Nat.Mul (Nat.succ j) i)) r)
-						(Nat.succ (Nat.Add (Nat.Add j (Nat.Mul (Nat.succ j) i)) r))
+						(Nat.add (Nat.add (Nat.succ j) (Nat.mul (Nat.succ j) i)) r)
+						(Nat.succ (Nat.add (Nat.add j (Nat.mul (Nat.succ j) i)) r))
 						(Eq.trans Nat
-							(Nat.Add (Nat.Add (Nat.succ j) (Nat.Mul (Nat.succ j) i)) r)
-							(Nat.Add (Nat.succ (Nat.Add j (Nat.Mul (Nat.succ j) i))) r)
-							(Nat.succ (Nat.Add (Nat.Add j (Nat.Mul (Nat.succ j) i)) r))
-							(Eq.congr Nat Nat ((t : Nat) => Nat.Add t r)
-								(Nat.Add (Nat.succ j) (Nat.Mul (Nat.succ j) i))
-								(Nat.succ (Nat.Add j (Nat.Mul (Nat.succ j) i)))
-								(Nat.Add.succ_add j (Nat.Mul (Nat.succ j) i)))
-							(Nat.Add.succ_add (Nat.Add j (Nat.Mul (Nat.succ j) i)) r)))
-					(Nat.Add.add_left_cancel (Nat.succ j)
-						(Nat.Add (Nat.Add (Nat.succ j) (Nat.Mul (Nat.succ j) i)) r)
+							(Nat.add (Nat.add (Nat.succ j) (Nat.mul (Nat.succ j) i)) r)
+							(Nat.add (Nat.succ (Nat.add j (Nat.mul (Nat.succ j) i))) r)
+							(Nat.succ (Nat.add (Nat.add j (Nat.mul (Nat.succ j) i)) r))
+							(Eq.congr Nat Nat ((t : Nat) => Nat.add t r)
+								(Nat.add (Nat.succ j) (Nat.mul (Nat.succ j) i))
+								(Nat.succ (Nat.add j (Nat.mul (Nat.succ j) i)))
+								(Nat.add.succ_add j (Nat.mul (Nat.succ j) i)))
+							(Nat.add.succ_add (Nat.add j (Nat.mul (Nat.succ j) i)) r)))
+					(Nat.add.add_left_cancel (Nat.succ j)
+						(Nat.add (Nat.add (Nat.succ j) (Nat.mul (Nat.succ j) i)) r)
 						Nat.zero
 						(Eq.trans Nat
-							(Nat.Add (Nat.succ j)
-								(Nat.Add (Nat.Add (Nat.succ j) (Nat.Mul (Nat.succ j) i)) r))
-							(Nat.Add
-								(Nat.Add (Nat.succ j)
-									(Nat.Add (Nat.succ j) (Nat.Mul (Nat.succ j) i))) r)
-							(Nat.Add (Nat.succ j) Nat.zero)
+							(Nat.add (Nat.succ j)
+								(Nat.add (Nat.add (Nat.succ j) (Nat.mul (Nat.succ j) i)) r))
+							(Nat.add
+								(Nat.add (Nat.succ j)
+									(Nat.add (Nat.succ j) (Nat.mul (Nat.succ j) i))) r)
+							(Nat.add (Nat.succ j) Nat.zero)
 							(Eq.symm Nat
-								(Nat.Add
-									(Nat.Add (Nat.succ j)
-										(Nat.Add (Nat.succ j) (Nat.Mul (Nat.succ j) i))) r)
-								(Nat.Add (Nat.succ j)
-									(Nat.Add (Nat.Add (Nat.succ j) (Nat.Mul (Nat.succ j) i)) r))
-								(Nat.Add.add_assoc (Nat.succ j)
-									(Nat.Add (Nat.succ j) (Nat.Mul (Nat.succ j) i)) r))
+								(Nat.add
+									(Nat.add (Nat.succ j)
+										(Nat.add (Nat.succ j) (Nat.mul (Nat.succ j) i))) r)
+								(Nat.add (Nat.succ j)
+									(Nat.add (Nat.add (Nat.succ j) (Nat.mul (Nat.succ j) i)) r))
+								(Nat.add.add_assoc (Nat.succ j)
+									(Nat.add (Nat.succ j) (Nat.mul (Nat.succ j) i)) r))
 							e))));
 
 Nat.coprime_div : (a : Nat) -> (d : Nat) -> (j : Nat) ->
@@ -303,11 +303,11 @@ Nat.coprime_div : (a : Nat) -> (d : Nat) -> (j : Nat) ->
 	(hpa : Nat.Dvd p (Nat.div (Nat.succ j) a)) =>
 	(hpd : Nat.Dvd p (Nat.div (Nat.succ j) d)) =>
 	Exists.elim Nat
-		((u : Nat) => Eq Nat (Nat.Mul p u) (Nat.div (Nat.succ j) a)) False hpa
-		((u : Nat) => (eu : Eq Nat (Nat.Mul p u) (Nat.div (Nat.succ j) a)) =>
+		((u : Nat) => Eq Nat (Nat.mul p u) (Nat.div (Nat.succ j) a)) False hpa
+		((u : Nat) => (eu : Eq Nat (Nat.mul p u) (Nat.div (Nat.succ j) a)) =>
 			Exists.elim Nat
-				((v : Nat) => Eq Nat (Nat.Mul p v) (Nat.div (Nat.succ j) d)) False hpd
-				((v : Nat) => (ev : Eq Nat (Nat.Mul p v) (Nat.div (Nat.succ j) d)) =>
+				((v : Nat) => Eq Nat (Nat.mul p v) (Nat.div (Nat.succ j) d)) False hpd
+				((v : Nat) => (ev : Eq Nat (Nat.mul p v) (Nat.div (Nat.succ j) d)) =>
 					// (g * p) divides a and d
 					Exists.elim Nat ((i : Nat) => Eq Nat p (Nat.succ (Nat.succ i))) False
 						(Nat.one_lt_form p
@@ -318,76 +318,76 @@ Nat.coprime_div : (a : Nat) -> (d : Nat) -> (j : Nat) ->
 						((i : Nat) => (ep : Eq Nat p (Nat.succ (Nat.succ i))) =>
 							Nat.not_le_mul_two j i
 								(Eq.subst Nat p (Nat.succ (Nat.succ i))
-									((t : Nat) => Nat.Le (Nat.Mul (Nat.succ j) t) (Nat.succ j))
+									((t : Nat) => Nat.Le (Nat.mul (Nat.succ j) t) (Nat.succ j))
 									ep
-									(hmax (Nat.Mul (Nat.succ j) p)
-										(Nat.dvd_ne_zero (Nat.Mul (Nat.succ j) p) d
+									(hmax (Nat.mul (Nat.succ j) p)
+										(Nat.dvd_ne_zero (Nat.mul (Nat.succ j) p) d
 											(Exists.intro Nat
 												((w : Nat) => Eq Nat
-													(Nat.Mul (Nat.Mul (Nat.succ j) p) w) d)
+													(Nat.mul (Nat.mul (Nat.succ j) p) w) d)
 												v
 												(Eq.trans Nat
-													(Nat.Mul (Nat.Mul (Nat.succ j) p) v)
-													(Nat.Mul (Nat.succ j) (Nat.Mul p v))
+													(Nat.mul (Nat.mul (Nat.succ j) p) v)
+													(Nat.mul (Nat.succ j) (Nat.mul p v))
 													d
-													(Nat.Mul.mul_assoc (Nat.succ j) p v)
+													(Nat.mul.mul_assoc (Nat.succ j) p v)
 													(Eq.trans Nat
-														(Nat.Mul (Nat.succ j) (Nat.Mul p v))
-														(Nat.Mul (Nat.succ j) (Nat.div (Nat.succ j) d))
+														(Nat.mul (Nat.succ j) (Nat.mul p v))
+														(Nat.mul (Nat.succ j) (Nat.div (Nat.succ j) d))
 														d
-														(Eq.congr Nat Nat (Nat.Mul (Nat.succ j))
-															(Nat.Mul p v) (Nat.div (Nat.succ j) d) ev)
+														(Eq.congr Nat Nat (Nat.mul (Nat.succ j))
+															(Nat.mul p v) (Nat.div (Nat.succ j) d) ev)
 														(Nat.div_spec j d hgd))))
 											hd)
-										(Nat.dvd_le (Nat.Mul (Nat.succ j) p) d
+										(Nat.dvd_le (Nat.mul (Nat.succ j) p) d
 											(Exists.intro Nat
 												((w : Nat) => Eq Nat
-													(Nat.Mul (Nat.Mul (Nat.succ j) p) w) d)
+													(Nat.mul (Nat.mul (Nat.succ j) p) w) d)
 												v
 												(Eq.trans Nat
-													(Nat.Mul (Nat.Mul (Nat.succ j) p) v)
-													(Nat.Mul (Nat.succ j) (Nat.Mul p v))
+													(Nat.mul (Nat.mul (Nat.succ j) p) v)
+													(Nat.mul (Nat.succ j) (Nat.mul p v))
 													d
-													(Nat.Mul.mul_assoc (Nat.succ j) p v)
+													(Nat.mul.mul_assoc (Nat.succ j) p v)
 													(Eq.trans Nat
-														(Nat.Mul (Nat.succ j) (Nat.Mul p v))
-														(Nat.Mul (Nat.succ j) (Nat.div (Nat.succ j) d))
+														(Nat.mul (Nat.succ j) (Nat.mul p v))
+														(Nat.mul (Nat.succ j) (Nat.div (Nat.succ j) d))
 														d
-														(Eq.congr Nat Nat (Nat.Mul (Nat.succ j))
-															(Nat.Mul p v) (Nat.div (Nat.succ j) d) ev)
+														(Eq.congr Nat Nat (Nat.mul (Nat.succ j))
+															(Nat.mul p v) (Nat.div (Nat.succ j) d) ev)
 														(Nat.div_spec j d hgd))))
 											hd)
 										(Exists.intro Nat
 											((w : Nat) => Eq Nat
-												(Nat.Mul (Nat.Mul (Nat.succ j) p) w) a)
+												(Nat.mul (Nat.mul (Nat.succ j) p) w) a)
 											u
 											(Eq.trans Nat
-												(Nat.Mul (Nat.Mul (Nat.succ j) p) u)
-												(Nat.Mul (Nat.succ j) (Nat.Mul p u))
+												(Nat.mul (Nat.mul (Nat.succ j) p) u)
+												(Nat.mul (Nat.succ j) (Nat.mul p u))
 												a
-												(Nat.Mul.mul_assoc (Nat.succ j) p u)
+												(Nat.mul.mul_assoc (Nat.succ j) p u)
 												(Eq.trans Nat
-													(Nat.Mul (Nat.succ j) (Nat.Mul p u))
-													(Nat.Mul (Nat.succ j) (Nat.div (Nat.succ j) a))
+													(Nat.mul (Nat.succ j) (Nat.mul p u))
+													(Nat.mul (Nat.succ j) (Nat.div (Nat.succ j) a))
 													a
-													(Eq.congr Nat Nat (Nat.Mul (Nat.succ j))
-														(Nat.Mul p u) (Nat.div (Nat.succ j) a) eu)
+													(Eq.congr Nat Nat (Nat.mul (Nat.succ j))
+														(Nat.mul p u) (Nat.div (Nat.succ j) a) eu)
 													(Nat.div_spec j a hga))))
 										(Exists.intro Nat
 											((w : Nat) => Eq Nat
-												(Nat.Mul (Nat.Mul (Nat.succ j) p) w) d)
+												(Nat.mul (Nat.mul (Nat.succ j) p) w) d)
 											v
 											(Eq.trans Nat
-												(Nat.Mul (Nat.Mul (Nat.succ j) p) v)
-												(Nat.Mul (Nat.succ j) (Nat.Mul p v))
+												(Nat.mul (Nat.mul (Nat.succ j) p) v)
+												(Nat.mul (Nat.succ j) (Nat.mul p v))
 												d
-												(Nat.Mul.mul_assoc (Nat.succ j) p v)
+												(Nat.mul.mul_assoc (Nat.succ j) p v)
 												(Eq.trans Nat
-													(Nat.Mul (Nat.succ j) (Nat.Mul p v))
-													(Nat.Mul (Nat.succ j) (Nat.div (Nat.succ j) d))
+													(Nat.mul (Nat.succ j) (Nat.mul p v))
+													(Nat.mul (Nat.succ j) (Nat.div (Nat.succ j) d))
 													d
-													(Eq.congr Nat Nat (Nat.Mul (Nat.succ j))
-														(Nat.Mul p v) (Nat.div (Nat.succ j) d) ev)
+													(Eq.congr Nat Nat (Nat.mul (Nat.succ j))
+														(Nat.mul p v) (Nat.div (Nat.succ j) d) ev)
 													(Nat.div_spec j d hgd)))))))));
 
 // ---- the same facts, stated for Nat.gcd itself ----
@@ -396,24 +396,24 @@ Nat.coprime_div : (a : Nat) -> (d : Nat) -> (j : Nat) ->
 Nat.gcd_facts : (a : Nat) -> (d : Nat) -> NotEq Nat d Nat.zero ->
 	Prop.And
 		(Nat.Coprime (Nat.div (Nat.gcd a d) a) (Nat.div (Nat.gcd a d) d))
-		(Eq Nat (Nat.Mul (Nat.gcd a d) (Nat.div (Nat.gcd a d) d)) d) :=
+		(Eq Nat (Nat.mul (Nat.gcd a d) (Nat.div (Nat.gcd a d) d)) d) :=
 	(a : Nat) => (d : Nat) => (hd : NotEq Nat d Nat.zero) =>
 	Exists.elim Nat
 		((j : Nat) => Eq Nat (Nat.gcd a d) (Nat.succ j))
 		(Prop.And
 			(Nat.Coprime (Nat.div (Nat.gcd a d) a) (Nat.div (Nat.gcd a d) d))
-			(Eq Nat (Nat.Mul (Nat.gcd a d) (Nat.div (Nat.gcd a d) d)) d))
+			(Eq Nat (Nat.mul (Nat.gcd a d) (Nat.div (Nat.gcd a d) d)) d))
 		(Nat.gcd_search_pos a d d)
 		((j : Nat) => (e : Eq Nat (Nat.gcd a d) (Nat.succ j)) =>
 			Eq.subst Nat (Nat.succ j) (Nat.gcd a d)
 				((t : Nat) =>
 					Prop.And
 						(Nat.Coprime (Nat.div t a) (Nat.div t d))
-						(Eq Nat (Nat.Mul t (Nat.div t d)) d))
+						(Eq Nat (Nat.mul t (Nat.div t d)) d))
 				(Eq.symm Nat (Nat.gcd a d) (Nat.succ j) e)
 				(Prop.And.intro
 					(Nat.Coprime (Nat.div (Nat.succ j) a) (Nat.div (Nat.succ j) d))
-					(Eq Nat (Nat.Mul (Nat.succ j) (Nat.div (Nat.succ j) d)) d)
+					(Eq Nat (Nat.mul (Nat.succ j) (Nat.div (Nat.succ j) d)) d)
 					(Nat.coprime_div a d j hd
 						(Eq.subst Nat (Nat.gcd a d) (Nat.succ j)
 							((t : Nat) => Nat.Dvd t a) e
@@ -439,7 +439,7 @@ Nat.gcd_coprime : (a : Nat) -> (d : Nat) -> NotEq Nat d Nat.zero ->
 	(a : Nat) => (d : Nat) => (hd : NotEq Nat d Nat.zero) =>
 	Prop.And.left
 		(Nat.Coprime (Nat.div (Nat.gcd a d) a) (Nat.div (Nat.gcd a d) d))
-		(Eq Nat (Nat.Mul (Nat.gcd a d) (Nat.div (Nat.gcd a d) d)) d)
+		(Eq Nat (Nat.mul (Nat.gcd a d) (Nat.div (Nat.gcd a d) d)) d)
 		(Nat.gcd_facts a d hd);
 
 // the reduced denominator is still nonzero
@@ -448,11 +448,11 @@ Nat.gcd_div_ne_zero : (a : Nat) -> (d : Nat) -> NotEq Nat d Nat.zero ->
 	(a : Nat) => (d : Nat) => (hd : NotEq Nat d Nat.zero) =>
 	(z : Eq Nat (Nat.div (Nat.gcd a d) d) Nat.zero) =>
 	hd
-		(Eq.trans Nat d (Nat.Mul (Nat.gcd a d) (Nat.div (Nat.gcd a d) d)) Nat.zero
-			(Eq.symm Nat (Nat.Mul (Nat.gcd a d) (Nat.div (Nat.gcd a d) d)) d
+		(Eq.trans Nat d (Nat.mul (Nat.gcd a d) (Nat.div (Nat.gcd a d) d)) Nat.zero
+			(Eq.symm Nat (Nat.mul (Nat.gcd a d) (Nat.div (Nat.gcd a d) d)) d
 				(Prop.And.right
 					(Nat.Coprime (Nat.div (Nat.gcd a d) a) (Nat.div (Nat.gcd a d) d))
-					(Eq Nat (Nat.Mul (Nat.gcd a d) (Nat.div (Nat.gcd a d) d)) d)
+					(Eq Nat (Nat.mul (Nat.gcd a d) (Nat.div (Nat.gcd a d) d)) d)
 					(Nat.gcd_facts a d hd)))
-			(Eq.congr Nat Nat (Nat.Mul (Nat.gcd a d))
+			(Eq.congr Nat Nat (Nat.mul (Nat.gcd a d))
 				(Nat.div (Nat.gcd a d) d) Nat.zero z));

@@ -44,15 +44,15 @@ Int.sub_nat_nat : Nat -> Nat -> Int :=
 	(x : Nat) => (y : Nat) =>
 	Nat.rec
 		((t : Nat) => Int)
-		(Int.nat (Nat.Sub x y))
+		(Int.nat (Nat.sub x y))
 		((k : Nat) => (ih : Int) => Int.neg_succ k)
-		(Nat.Sub y x);
+		(Nat.sub y x);
 
 // Addition by cases on both arguments. The three equations below are now
 // consequences of this rather than a partial specification of an opaque
 // function - they hold by reflexivity in the checker, and stay assumptions only
 // because the exporter cannot yet carry a proof that needs a recursor to fire.
-Int.Add : Int -> Int -> Int :=
+Int.add : Int -> Int -> Int :=
 	(a : Int) => (b : Int) =>
 	Int.rec
 		((t : Int) => Int)
@@ -60,7 +60,7 @@ Int.Add : Int -> Int -> Int :=
 			Int.rec
 				((t : Int) => Int)
         // x + y
-				((y : Nat) => Int.nat (Nat.Add x y))
+				((y : Nat) => Int.nat (Nat.add x y))
         // x - s(y)
 				((y : Nat) => Int.sub_nat_nat x (Nat.succ y))
 				b)
@@ -70,31 +70,31 @@ Int.Add : Int -> Int -> Int :=
         // -s(x) + y
 				((y : Nat) => Int.sub_nat_nat y (Nat.succ x))
         // -s(x) - s(y) = -s(s(x + y))
-				((y : Nat) => Int.neg_succ (Nat.succ (Nat.Add x y)))
+				((y : Nat) => Int.neg_succ (Nat.succ (Nat.add x y)))
 				b)
 		a;
 
-Int.Add.add_nat_nat :
+Int.add.add_nat_nat :
 	(x : Nat) ->
 	(y : Nat) ->
 	Eq Int
-		(Int.Add (Int.nat x) (Int.nat y))
-		(Int.nat (Nat.Add x y)) :=
-	(x : Nat) => (y : Nat) => Eq.refl Int (Int.nat (Nat.Add x y));
+		(Int.add (Int.nat x) (Int.nat y))
+		(Int.nat (Nat.add x y)) :=
+	(x : Nat) => (y : Nat) => Eq.refl Int (Int.nat (Nat.add x y));
 	
-Int.Add.add_neg_succ_neg_succ :
+Int.add.add_neg_succ_neg_succ :
 	(x : Nat) ->
 	(y : Nat) ->
 	Eq Int
-		(Int.Add (Int.neg_succ x) (Int.neg_succ y))
-		(Int.neg_succ (Nat.succ (Nat.Add x y))) :=
+		(Int.add (Int.neg_succ x) (Int.neg_succ y))
+		(Int.neg_succ (Nat.succ (Nat.add x y))) :=
 	(x : Nat) => (y : Nat) =>
-	Eq.refl Int (Int.neg_succ (Nat.succ (Nat.Add x y)));
+	Eq.refl Int (Int.neg_succ (Nat.succ (Nat.add x y)));
 
-Int.Add.add_zero_neg_succ:
+Int.add.add_zero_neg_succ:
 	(x : Nat) ->
 	Eq Int
-		(Int.Add (Int.nat Nat.zero) (Int.neg_succ x))
+		(Int.add (Int.nat Nat.zero) (Int.neg_succ x))
 		(Int.neg_succ x) :=
 	(x : Nat) => Eq.refl Int (Int.neg_succ x);
 
@@ -135,6 +135,6 @@ Int.abs_neg_nat : (n : Nat) -> Eq Nat (Int.abs_nat (Int.neg_nat n)) n :=
 Int.mul_nat : Int -> Nat -> Int :=
 	(x : Int) => (d : Nat) =>
 	Int.rec ((t : Int) => Int)
-		((m : Nat) => Int.nat (Nat.Mul m d))
-		((m : Nat) => Int.neg_nat (Nat.Mul (Nat.succ m) d))
+		((m : Nat) => Int.nat (Nat.mul m d))
+		((m : Nat) => Int.neg_nat (Nat.mul (Nat.succ m) d))
 		x;

@@ -1,6 +1,6 @@
-import equality from "../defs/equality.txt";
-import nat from "../defs/nat.txt";
-import prop from "../defs/prop.txt";
+import equality from "../cic/equality.txt";
+import nat from "../cic/nat.txt";
+import prop from "../cic/prop.txt";
 
 export const libs: Record<string, string | undefined> = {
 	"equality.txt": equality,

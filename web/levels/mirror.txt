@@ -1,0 +1,17 @@
+// Prove that "and" doesn't care which way round it's written.
+And : Prop -> Prop -> Prop;
+And.intro : (a : Prop) -> (b : Prop) -> a -> b -> And a b;
+And.left : (a : Prop) -> (b : Prop) -> And a b -> a;
+And.right : (a : Prop) -> (b : Prop) -> And a b -> b;
+
+// For any p and q: take a proof of (p and q), give back a proof of (q and p).
+// Hint: you'll need to take the pieces apart, then put them back the other way.
+swap : (p : Prop) -> (q : Prop) -> And p q -> And q p :=
+	(p : Prop) => (q : Prop) => (h : And p q) => <INPUT>;
+
+Sun : Prop;
+Moon : Prop;
+sun_and_moon : And Sun Moon;
+
+// Now use your own lemma.
+moon_and_sun : And Moon Sun := <INPUT>;

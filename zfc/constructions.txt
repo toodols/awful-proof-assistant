@@ -1,0 +1,146 @@
+@require "description.txt"
+
+empty_exists : exists Set ((e : Set) => is_empty e) :=
+	exists.elim Set
+		((i : Set) => and (exists Set ((e : Set) => and (mem e i) (is_empty e)))
+			((x : Set) -> mem x i -> exists Set ((s : Set) =>
+				and (mem s i) ((z : Set) -> iff (mem z s) (or (mem z x) (eq Set z x))))))
+		(exists Set ((e : Set) => is_empty e)) infinity
+		((i : Set) => (hi : and (exists Set ((e : Set) => and (mem e i) (is_empty e)))
+			((x : Set) -> mem x i -> exists Set ((s : Set) =>
+				and (mem s i) ((z : Set) -> iff (mem z s) (or (mem z x) (eq Set z x)))))) =>
+			exists.elim Set ((e : Set) => and (mem e i) (is_empty e))
+				(exists Set ((e : Set) => is_empty e))
+				(and.left (exists Set ((e : Set) => and (mem e i) (is_empty e)))
+					((x : Set) -> mem x i -> exists Set ((s : Set) =>
+						and (mem s i) ((z : Set) -> iff (mem z s) (or (mem z x) (eq Set z x))))) hi)
+				((e : Set) => (he : and (mem e i) (is_empty e)) =>
+					exists.intro Set ((e2 : Set) => is_empty e2) e
+						(and.right (mem e i) (is_empty e) he)));
+
+empty_eq : (a : Set) -> (b : Set) -> is_empty a -> is_empty b -> eq Set a b :=
+	(a : Set) => (b : Set) => (ha : is_empty a) => (hb : is_empty b) =>
+	extensionality a b ((x : Set) =>
+		iff.intro (mem x a) (mem x b)
+			((m : mem x a) => false.elim (mem x b) (ha x m))
+			((m : mem x b) => false.elim (mem x a) (hb x m)));
+
+empty_unique : unique is_empty :=
+	exists.elim Set ((e : Set) => is_empty e) (unique is_empty) empty_exists
+		((e : Set) => (he : is_empty e) =>
+			exists.intro Set
+				((x : Set) => and (is_empty x) ((y : Set) -> is_empty y -> eq Set y x))
+				e
+				(and.intro (is_empty e) ((y : Set) -> is_empty y -> eq Set y e) he
+					((y : Set) => (hy : is_empty y) => empty_eq y e hy he)));
+
+empty : Set := the is_empty empty_unique;
+
+not_mem_empty : is_empty empty := the_spec is_empty empty_unique;
+
+pair : Set -> Set -> Set :=
+	(a : Set) => (b : Set) =>
+	collect ((x : Set) => or (eq Set x a) (eq Set x b)) (pairing a b);
+
+mem_pair : (a : Set) -> (b : Set) -> (x : Set) ->
+	iff (mem x (pair a b)) (or (eq Set x a) (eq Set x b)) :=
+	(a : Set) => (b : Set) =>
+	collect_spec ((x : Set) => or (eq Set x a) (eq Set x b)) (pairing a b);
+
+single : Set -> Set := (a : Set) => pair a a;
+
+mem_single : (a : Set) -> (x : Set) -> iff (mem x (single a)) (eq Set x a) :=
+	(a : Set) => (x : Set) =>
+	iff.intro (mem x (single a)) (eq Set x a)
+		((m : mem x (single a)) =>
+			or.elim (eq Set x a) (eq Set x a) (eq Set x a)
+				(iff.mp (mem x (pair a a)) (or (eq Set x a) (eq Set x a)) (mem_pair a a x) m)
+				((e : eq Set x a) => e)
+				((e : eq Set x a) => e))
+		((e : eq Set x a) =>
+			iff.mpr (mem x (pair a a)) (or (eq Set x a) (eq Set x a)) (mem_pair a a x)
+				(or.inl (eq Set x a) (eq Set x a) e));
+
+union : Set -> Set :=
+	(a : Set) =>
+	collect ((x : Set) => exists Set ((y : Set) => and (mem y a) (mem x y)))
+		(union_exists a);
+
+mem_union : (a : Set) -> (x : Set) ->
+	iff (mem x (union a)) (exists Set ((y : Set) => and (mem y a) (mem x y))) :=
+	(a : Set) =>
+	collect_spec ((x : Set) => exists Set ((y : Set) => and (mem y a) (mem x y)))
+		(union_exists a);
+
+power : Set -> Set :=
+	(a : Set) => collect ((x : Set) => subset x a) (power_exists a);
+
+mem_power : (a : Set) -> (x : Set) -> iff (mem x (power a)) (subset x a) :=
+	(a : Set) =>
+	collect_spec ((x : Set) => subset x a) (power_exists a);
+
+succ : Set -> Set :=
+	(x : Set) => union (pair x (single x));
+
+mem_succ : (x : Set) -> (z : Set) ->
+	iff (mem z (succ x)) (or (mem z x) (eq Set z x)) :=
+	(x : Set) => (z : Set) =>
+	iff.intro (mem z (succ x)) (or (mem z x) (eq Set z x))
+		((m : mem z (succ x)) =>
+			exists.elim Set
+				((y : Set) => and (mem y (pair x (single x))) (mem z y))
+				(or (mem z x) (eq Set z x))
+				(iff.mp (mem z (succ x))
+					(exists Set ((y : Set) => and (mem y (pair x (single x))) (mem z y)))
+					(mem_union (pair x (single x)) z) m)
+				((y : Set) => (hy : and (mem y (pair x (single x))) (mem z y)) =>
+					or.elim (eq Set y x) (eq Set y (single x)) (or (mem z x) (eq Set z x))
+						(iff.mp (mem y (pair x (single x)))
+							(or (eq Set y x) (eq Set y (single x)))
+							(mem_pair x (single x) y)
+							(and.left (mem y (pair x (single x))) (mem z y) hy))
+						((yx : eq Set y x) =>
+							or.inl (mem z x) (eq Set z x)
+								(eq.subst Set y x ((t : Set) => mem z t) yx
+									(and.right (mem y (pair x (single x))) (mem z y) hy)))
+						((ys : eq Set y (single x)) =>
+							or.inr (mem z x) (eq Set z x)
+								(iff.mp (mem z (single x)) (eq Set z x) (mem_single x z)
+									(eq.subst Set y (single x) ((t : Set) => mem z t) ys
+										(and.right (mem y (pair x (single x))) (mem z y) hy))))))
+		((h : or (mem z x) (eq Set z x)) =>
+			iff.mpr (mem z (succ x))
+				(exists Set ((y : Set) => and (mem y (pair x (single x))) (mem z y)))
+				(mem_union (pair x (single x)) z)
+				(or.elim (mem z x) (eq Set z x)
+					(exists Set ((y : Set) => and (mem y (pair x (single x))) (mem z y)))
+					h
+					((mz : mem z x) =>
+						exists.intro Set
+							((y : Set) => and (mem y (pair x (single x))) (mem z y)) x
+							(and.intro (mem x (pair x (single x))) (mem z x)
+								(iff.mpr (mem x (pair x (single x)))
+									(or (eq Set x x) (eq Set x (single x)))
+									(mem_pair x (single x) x)
+									(or.inl (eq Set x x) (eq Set x (single x)) (eq.refl Set x)))
+								mz))
+					((zx : eq Set z x) =>
+						exists.intro Set
+							((y : Set) => and (mem y (pair x (single x))) (mem z y)) (single x)
+							(and.intro (mem (single x) (pair x (single x))) (mem z (single x))
+								(iff.mpr (mem (single x) (pair x (single x)))
+									(or (eq Set (single x) x) (eq Set (single x) (single x)))
+									(mem_pair x (single x) (single x))
+									(or.inr (eq Set (single x) x) (eq Set (single x) (single x))
+										(eq.refl Set (single x))))
+								(iff.mpr (mem z (single x)) (eq Set z x) (mem_single x z) zx)))));
+
+
+separate : (Set -> Prop) -> Set -> Set :=
+	(P : Set -> Prop) => (a : Set) =>
+	collect ((x : Set) => and (mem x a) (P x)) (separation P a);
+
+mem_separate : (P : Set -> Prop) -> (a : Set) -> (x : Set) ->
+	iff (mem x (separate P a)) (and (mem x a) (P x)) :=
+	(P : Set -> Prop) => (a : Set) =>
+	collect_spec ((x : Set) => and (mem x a) (P x)) (separation P a);

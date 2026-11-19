@@ -8,8 +8,8 @@ coke : Type;
 pepsi : Type;
 dr_pepper: Type;
 
-coke_eq_pepsi : Eq coke pepsi;
-pepsi_eq_dr_pepper : Eq pepsi dr_pepper;
+coke_eq_pepsi : Equals coke pepsi;
+pepsi_eq_dr_pepper : Equals pepsi dr_pepper;
 // Use the symmetric property on coke_eq_pepsi
 pepsi_eq_coke : Equals pepsi coke := <INPUT>;
 // Use the transitive property on coke=pepsi and pepsi=dr pepper

@@ -25,23 +25,23 @@ List.rec El motive case_nil case_cons (List.cons El head tail) :
 	motive (List.cons El head tail) :=
 	case_cons head tail (List.rec El motive case_nil case_cons tail);
 
-List.Len : (El : Type) -> (list : List El) -> Nat :=
-	(El : Type) => (list : List El) =>
+List.len : (El : Type) -> (xs : List El) -> Nat :=
+	(El : Type) => (xs : List El) =>
 	List.rec El
 		((t : List El) => Nat)
 		Nat.zero
 		((head : El) => (tail : List El) => (ih : Nat) => Nat.succ ih)
-		list;
+		xs;
 // Proof that len([]) = 0
-List.Len.nil : (El : Type) -> Eq Nat (List.Len El (List.nil El)) Nat.zero :=
+List.len.nil : (El : Type) -> Eq Nat (List.len El (List.nil El)) Nat.zero :=
 	(El : Type) => Eq.refl Nat Nat.zero;
 // Proof that len([head, ...tail]) = succ(len(tail))
-List.Len.cons : (El : Type) -> (head: El) -> (tail : List El) ->
-	Eq Nat (List.Len El (List.cons El head tail)) (Nat.succ (List.Len El tail)) :=
+List.len.cons : (El : Type) -> (head: El) -> (tail : List El) ->
+	Eq Nat (List.len El (List.cons El head tail)) (Nat.succ (List.len El tail)) :=
 	(El : Type) => (head : El) => (tail : List El) =>
-	Eq.refl Nat (Nat.succ (List.Len El tail));
+	Eq.refl Nat (Nat.succ (List.len El tail));
 
-List.Join : (El : Type) -> (a : List El) -> (b : List El) -> List El :=
+List.join : (El : Type) -> (a : List El) -> (b : List El) -> List El :=
 	(El : Type) => (a : List El) => (b : List El) =>
 	List.rec El
 		((t : List El) => List El)
@@ -50,11 +50,11 @@ List.Join : (El : Type) -> (a : List El) -> (b : List El) -> List El :=
 			List.cons El head ih)
 		a;
 // Join([], a) = a
-List.Join.nil : (El : Type) -> (a : List El) ->
-	Eq (List El) (List.Join El (List.nil El) a) a :=
+List.join.nil : (El : Type) -> (a : List El) ->
+	Eq (List El) (List.join El (List.nil El) a) a :=
 	(El : Type) => (a : List El) => Eq.refl (List El) a;
 // Join([head, ...tail], a) = [head, ...Join(tail, a)]
-List.Join.cons : (El : Type) -> (head : El) -> (tail: List El) -> (a : List El) ->
-	Eq (List El) (List.Join El (List.cons El head tail) a) (List.cons El head (List.Join El tail a)) :=
+List.join.cons : (El : Type) -> (head : El) -> (tail: List El) -> (a : List El) ->
+	Eq (List El) (List.join El (List.cons El head tail) a) (List.cons El head (List.join El tail a)) :=
 	(El : Type) => (head : El) => (tail : List El) => (a : List El) =>
-	Eq.refl (List El) (List.cons El head (List.Join El tail a));
+	Eq.refl (List El) (List.cons El head (List.join El tail a));

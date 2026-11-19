@@ -1,0 +1,68 @@
+false : Prop := (c : Prop) -> c;
+false.elim : (t : Prop) -> false -> t := (t : Prop) => (f : false) => f t;
+
+not : Prop -> Prop := (a : Prop) => a -> false;
+
+and : Prop -> Prop -> Prop :=
+	(a : Prop) => (b : Prop) => (c : Prop) -> (a -> b -> c) -> c;
+and.intro : (a : Prop) -> (b : Prop) -> a -> b -> and a b :=
+	(a : Prop) => (b : Prop) => (x : a) => (y : b) =>
+	(c : Prop) => (k : a -> b -> c) => k x y;
+and.left : (a : Prop) -> (b : Prop) -> and a b -> a :=
+	(a : Prop) => (b : Prop) => (h : and a b) =>
+	h a ((x : a) => (y : b) => x);
+and.right : (a : Prop) -> (b : Prop) -> and a b -> b :=
+	(a : Prop) => (b : Prop) => (h : and a b) =>
+	h b ((x : a) => (y : b) => y);
+
+or : Prop -> Prop -> Prop :=
+	(a : Prop) => (b : Prop) => (c : Prop) -> (a -> c) -> (b -> c) -> c;
+or.inl : (a : Prop) -> (b : Prop) -> a -> or a b :=
+	(a : Prop) => (b : Prop) => (x : a) =>
+	(c : Prop) => (f : a -> c) => (g : b -> c) => f x;
+or.inr : (a : Prop) -> (b : Prop) -> b -> or a b :=
+	(a : Prop) => (b : Prop) => (y : b) =>
+	(c : Prop) => (f : a -> c) => (g : b -> c) => g y;
+or.elim : (a : Prop) -> (b : Prop) -> (c : Prop) -> or a b -> (a -> c) -> (b -> c) -> c :=
+	(a : Prop) => (b : Prop) => (c : Prop) => (h : or a b) =>
+	(f : a -> c) => (g : b -> c) => h c f g;
+
+iff : Prop -> Prop -> Prop :=
+	(a : Prop) => (b : Prop) => and (a -> b) (b -> a);
+iff.intro : (a : Prop) -> (b : Prop) -> (a -> b) -> (b -> a) -> iff a b :=
+	(a : Prop) => (b : Prop) => (f : a -> b) => (g : b -> a) =>
+	and.intro (a -> b) (b -> a) f g;
+iff.mp : (a : Prop) -> (b : Prop) -> iff a b -> a -> b :=
+	(a : Prop) => (b : Prop) => (h : iff a b) =>
+	and.left (a -> b) (b -> a) h;
+iff.mpr : (a : Prop) -> (b : Prop) -> iff a b -> b -> a :=
+	(a : Prop) => (b : Prop) => (h : iff a b) =>
+	and.right (a -> b) (b -> a) h;
+
+exists : (A : Type) -> (A -> Prop) -> Prop :=
+	(A : Type) => (P : A -> Prop) => (c : Prop) -> ((x : A) -> P x -> c) -> c;
+exists.intro : (A : Type) -> (P : A -> Prop) -> (a : A) -> P a -> exists A P :=
+	(A : Type) => (P : A -> Prop) => (a : A) => (h : P a) =>
+	(c : Prop) => (k : (x : A) -> P x -> c) => k a h;
+exists.elim : (A : Type) -> (P : A -> Prop) -> (c : Prop) ->
+	exists A P -> ((x : A) -> P x -> c) -> c :=
+	(A : Type) => (P : A -> Prop) => (c : Prop) => (h : exists A P) =>
+	(k : (x : A) -> P x -> c) => h c k;
+
+eq : (A : Type) -> A -> A -> Prop :=
+	(A : Type) => (x : A) => (y : A) => (P : A -> Prop) -> P x -> P y;
+eq.refl : (A : Type) -> (x : A) -> eq A x x :=
+	(A : Type) => (x : A) => (P : A -> Prop) => (h : P x) => h;
+eq.subst : (A : Type) -> (a : A) -> (b : A) -> (P : A -> Prop) -> eq A a b -> P a -> P b :=
+	(A : Type) => (a : A) => (b : A) => (P : A -> Prop) => (h : eq A a b) => (x : P a) =>
+	h P x;
+eq.symm : (A : Type) -> (a : A) -> (b : A) -> eq A a b -> eq A b a :=
+	(A : Type) => (a : A) => (b : A) => (h : eq A a b) =>
+	h ((t : A) => eq A t a) (eq.refl A a);
+eq.trans : (A : Type) -> (a : A) -> (b : A) -> (c : A) -> eq A a b -> eq A b c -> eq A a c :=
+	(A : Type) => (a : A) => (b : A) => (c : A) => (h1 : eq A a b) => (h2 : eq A b c) =>
+	h2 ((t : A) => eq A a t) h1;
+eq.congr : (A : Type) -> (B : Type) -> (f : A -> B) -> (a : A) -> (b : A) ->
+	eq A a b -> eq B (f a) (f b) :=
+	(A : Type) => (B : Type) => (f : A -> B) => (a : A) => (b : A) => (h : eq A a b) =>
+	h ((t : A) => eq B (f a) (f t)) (eq.refl B (f a));

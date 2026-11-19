@@ -13,7 +13,7 @@ function row(label: string, ms: number, count?: number) {
 	return `  ${label.padEnd(30)} ${stmts.padStart(10)} ${duration(ms).padStart(8)}`;
 }
 
-// `Nat.Add` for a declaration, `Nat.rec rule` for one of its iota rules
+// `Nat.add` for a declaration, `Nat.rec rule` for one of its iota rules
 function label_of(stmt: Statement) {
 	const name = first_ident(stmt.pat).ident;
 	return stmt.pat.type === "application" ? `${name} rule` : name;
@@ -32,7 +32,7 @@ const parse_started = performance.now();
 let statements: Statement[];
 try {
 	statements = await expand(
-		"./defs/main.txt",
+		process.argv[2] || "./cic/main.txt",
 		async (path) => {
 			reading = path;
 			return await file(path).text();
@@ -40,7 +40,7 @@ try {
 		{
 			on_parsed: (path, count, ms) => {
 				parsed += count;
-				console.log(row(path.replace("./defs/", ""), ms, count));
+				console.log(row(path.replace("./cic/", ""), ms, count));
 			},
 		},
 	);

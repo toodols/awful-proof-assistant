@@ -1,0 +1,196 @@
+@require "arith.txt"
+
+Nat.double : Nat -> Nat :=
+	(n : Nat) =>
+	Nat.rec
+		((t : Nat) => Nat)
+		Nat.zero
+		((m : Nat) => (ih : Nat) => Nat.succ (Nat.succ ih))
+		n;
+
+// double is injective. Induction on the first argument with the second still
+// quantified, then cases on the second.
+Nat.double_inj.zero : (b : Nat) ->
+	Eq Nat (Nat.double Nat.zero) (Nat.double b) -> Eq Nat Nat.zero b :=
+	Nat.rec_prop
+		((b : Nat) =>
+			Eq Nat (Nat.double Nat.zero) (Nat.double b) -> Eq Nat Nat.zero b)
+		((h : Eq Nat Nat.zero Nat.zero) => Eq.refl Nat Nat.zero)
+		((b : Nat) =>
+			(ih : Eq Nat (Nat.double Nat.zero) (Nat.double b) ->
+				Eq Nat Nat.zero b) =>
+			(h : Eq Nat Nat.zero (Nat.succ (Nat.succ (Nat.double b)))) =>
+			False.elim (Eq Nat Nat.zero (Nat.succ b))
+				(Nat.zero_ne_succ (Nat.succ (Nat.double b)) h));
+
+Nat.double_inj.succ : (a : Nat) ->
+	((b : Nat) -> Eq Nat (Nat.double a) (Nat.double b) -> Eq Nat a b) ->
+	(b : Nat) ->
+	Eq Nat (Nat.double (Nat.succ a)) (Nat.double b) -> Eq Nat (Nat.succ a) b :=
+	(a : Nat) =>
+	(ih : (b : Nat) -> Eq Nat (Nat.double a) (Nat.double b) -> Eq Nat a b) =>
+	Nat.rec_prop
+		((b : Nat) =>
+			Eq Nat (Nat.double (Nat.succ a)) (Nat.double b) ->
+			Eq Nat (Nat.succ a) b)
+		((h : Eq Nat (Nat.succ (Nat.succ (Nat.double a))) Nat.zero) =>
+			False.elim (Eq Nat (Nat.succ a) Nat.zero)
+				(Nat.succ_ne_zero (Nat.succ (Nat.double a)) h))
+		((b : Nat) =>
+			(ihb : Eq Nat (Nat.double (Nat.succ a)) (Nat.double b) ->
+				Eq Nat (Nat.succ a) b) =>
+			(h : Eq Nat
+				(Nat.succ (Nat.succ (Nat.double a)))
+				(Nat.succ (Nat.succ (Nat.double b)))) =>
+			Eq.congr Nat Nat Nat.succ a b
+				(ih b
+					(Nat.succ_inj (Nat.double a) (Nat.double b)
+						(Nat.succ_inj
+							(Nat.succ (Nat.double a))
+							(Nat.succ (Nat.double b))
+							h))));
+
+Nat.double_inj : (a : Nat) -> (b : Nat) ->
+	Eq Nat (Nat.double a) (Nat.double b) -> Eq Nat a b :=
+	Nat.rec_prop
+		((a : Nat) =>
+			(b : Nat) -> Eq Nat (Nat.double a) (Nat.double b) -> Eq Nat a b)
+		Nat.double_inj.zero
+		Nat.double_inj.succ;
+
+Nat.double_eq : (n : Nat) -> Eq Nat (Nat.double n) (Nat.add n n) :=
+	Nat.rec_prop
+		((n : Nat) => Eq Nat (Nat.double n) (Nat.add n n))
+		(Eq.refl Nat Nat.zero)
+		((n : Nat) => (ih : Eq Nat (Nat.double n) (Nat.add n n)) =>
+			Eq.trans Nat
+				(Nat.succ (Nat.succ (Nat.double n)))
+				(Nat.succ (Nat.succ (Nat.add n n)))
+				(Nat.add (Nat.succ n) (Nat.succ n))
+				(Eq.congr Nat Nat Nat.succ
+					(Nat.succ (Nat.double n)) (Nat.succ (Nat.add n n))
+					(Eq.congr Nat Nat Nat.succ (Nat.double n) (Nat.add n n) ih))
+				(Eq.symm Nat
+					(Nat.add (Nat.succ n) (Nat.succ n))
+					(Nat.succ (Nat.succ (Nat.add n n)))
+					(Eq.congr Nat Nat Nat.succ
+						(Nat.add (Nat.succ n) n) (Nat.succ (Nat.add n n))
+						(Nat.add.succ_add n n))));
+
+Nat.double_add : (p : Nat) -> (q : Nat) ->
+	Eq Nat (Nat.double (Nat.add p q)) (Nat.add (Nat.double p) (Nat.double q)) :=
+	(p : Nat) =>
+	Nat.rec_prop
+		((q : Nat) =>
+			Eq Nat (Nat.double (Nat.add p q)) (Nat.add (Nat.double p) (Nat.double q)))
+		(Eq.refl Nat (Nat.double p))
+		((q : Nat) =>
+			(ih : Eq Nat (Nat.double (Nat.add p q))
+				(Nat.add (Nat.double p) (Nat.double q))) =>
+			Eq.congr Nat Nat Nat.succ
+				(Nat.succ (Nat.double (Nat.add p q)))
+				(Nat.succ (Nat.add (Nat.double p) (Nat.double q)))
+				(Eq.congr Nat Nat Nat.succ
+					(Nat.double (Nat.add p q))
+					(Nat.add (Nat.double p) (Nat.double q)) ih));
+
+Nat.mul.mul_double : (x : Nat) -> (y : Nat) ->
+	Eq Nat (Nat.mul x (Nat.double y)) (Nat.double (Nat.mul x y)) :=
+	(x : Nat) =>
+	Nat.rec_prop
+		((y : Nat) => Eq Nat (Nat.mul x (Nat.double y)) (Nat.double (Nat.mul x y)))
+		(Eq.refl Nat Nat.zero)
+		((y : Nat) =>
+			(ih : Eq Nat (Nat.mul x (Nat.double y)) (Nat.double (Nat.mul x y))) =>
+			Eq.trans Nat
+				(Nat.add x (Nat.add x (Nat.mul x (Nat.double y))))
+				(Nat.add x (Nat.add x (Nat.double (Nat.mul x y))))
+				(Nat.double (Nat.add x (Nat.mul x y)))
+				(Eq.congr Nat Nat (Nat.add x)
+					(Nat.add x (Nat.mul x (Nat.double y)))
+					(Nat.add x (Nat.double (Nat.mul x y)))
+					(Eq.congr Nat Nat (Nat.add x)
+						(Nat.mul x (Nat.double y)) (Nat.double (Nat.mul x y)) ih))
+				(Eq.trans Nat
+					(Nat.add x (Nat.add x (Nat.double (Nat.mul x y))))
+					(Nat.add (Nat.add x x) (Nat.double (Nat.mul x y)))
+					(Nat.double (Nat.add x (Nat.mul x y)))
+					(Eq.symm Nat
+						(Nat.add (Nat.add x x) (Nat.double (Nat.mul x y)))
+						(Nat.add x (Nat.add x (Nat.double (Nat.mul x y))))
+						(Nat.add.add_assoc x x (Nat.double (Nat.mul x y))))
+					(Eq.trans Nat
+						(Nat.add (Nat.add x x) (Nat.double (Nat.mul x y)))
+						(Nat.add (Nat.double x) (Nat.double (Nat.mul x y)))
+						(Nat.double (Nat.add x (Nat.mul x y)))
+						(Eq.congr Nat Nat
+							((t : Nat) => Nat.add t (Nat.double (Nat.mul x y)))
+							(Nat.add x x) (Nat.double x)
+							(Eq.symm Nat (Nat.double x) (Nat.add x x) (Nat.double_eq x)))
+						(Eq.symm Nat
+							(Nat.double (Nat.add x (Nat.mul x y)))
+							(Nat.add (Nat.double x) (Nat.double (Nat.mul x y)))
+							(Nat.double_add x (Nat.mul x y))))));
+
+Nat.mul.double_mul : (x : Nat) -> (y : Nat) ->
+	Eq Nat (Nat.mul (Nat.double x) y) (Nat.double (Nat.mul x y)) :=
+	(x : Nat) =>
+	Nat.rec_prop
+		((y : Nat) => Eq Nat (Nat.mul (Nat.double x) y) (Nat.double (Nat.mul x y)))
+		(Eq.refl Nat Nat.zero)
+		((y : Nat) =>
+			(ih : Eq Nat (Nat.mul (Nat.double x) y) (Nat.double (Nat.mul x y))) =>
+			Eq.trans Nat
+				(Nat.add (Nat.double x) (Nat.mul (Nat.double x) y))
+				(Nat.add (Nat.double x) (Nat.double (Nat.mul x y)))
+				(Nat.double (Nat.add x (Nat.mul x y)))
+				(Eq.congr Nat Nat (Nat.add (Nat.double x))
+					(Nat.mul (Nat.double x) y) (Nat.double (Nat.mul x y)) ih)
+				(Eq.symm Nat
+					(Nat.double (Nat.add x (Nat.mul x y)))
+					(Nat.add (Nat.double x) (Nat.double (Nat.mul x y)))
+					(Nat.double_add x (Nat.mul x y))));
+
+Nat.double_sq : (k : Nat) ->
+	Eq Nat (Nat.mul (Nat.double k) (Nat.double k))
+		(Nat.double (Nat.double (Nat.mul k k))) :=
+	(k : Nat) =>
+	Eq.trans Nat
+		(Nat.mul (Nat.double k) (Nat.double k))
+		(Nat.double (Nat.mul k (Nat.double k)))
+		(Nat.double (Nat.double (Nat.mul k k)))
+		(Nat.mul.double_mul k (Nat.double k))
+		(Eq.congr Nat Nat Nat.double
+			(Nat.mul k (Nat.double k)) (Nat.double (Nat.mul k k))
+			(Nat.mul.mul_double k k));
+
+Nat.add.two_add : (x : Nat) ->
+	Eq Nat (Nat.add Nat.two x) (Nat.succ (Nat.succ x)) :=
+	(x : Nat) =>
+	Eq.trans Nat
+		(Nat.add (Nat.succ (Nat.succ Nat.zero)) x)
+		(Nat.succ (Nat.add (Nat.succ Nat.zero) x))
+		(Nat.succ (Nat.succ x))
+		(Nat.add.succ_add (Nat.succ Nat.zero) x)
+		(Eq.congr Nat Nat Nat.succ
+			(Nat.add (Nat.succ Nat.zero) x) (Nat.succ x)
+			(Eq.trans Nat
+				(Nat.add (Nat.succ Nat.zero) x)
+				(Nat.succ (Nat.add Nat.zero x))
+				(Nat.succ x)
+				(Nat.add.succ_add Nat.zero x)
+				(Eq.congr Nat Nat Nat.succ (Nat.add Nat.zero x) x
+					(Nat.add.zero_add x))));
+
+Nat.mul.two_mul : (n : Nat) -> Eq Nat (Nat.mul Nat.two n) (Nat.double n) :=
+	Nat.rec_prop
+		((n : Nat) => Eq Nat (Nat.mul Nat.two n) (Nat.double n))
+		(Eq.refl Nat Nat.zero)
+		((n : Nat) => (ih : Eq Nat (Nat.mul Nat.two n) (Nat.double n)) =>
+			Eq.trans Nat
+				(Nat.add Nat.two (Nat.mul Nat.two n))
+				(Nat.add Nat.two (Nat.double n))
+				(Nat.succ (Nat.succ (Nat.double n)))
+				(Eq.congr Nat Nat (Nat.add Nat.two)
+					(Nat.mul Nat.two n) (Nat.double n) ih)
+				(Nat.add.two_add (Nat.double n)));

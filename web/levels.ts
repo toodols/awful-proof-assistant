@@ -8,6 +8,8 @@ import equality1 from "./levels/equality1.txt";
 import equality2 from "./levels/equality2.txt";
 import sandbox from "./levels/sandbox.txt";
 import family from "./levels/family.txt";
+import rainyday from "./levels/rainyday.txt";
+import mirror from "./levels/mirror.txt";
 
 export const levels = [
 	aliceandbob1,
@@ -19,6 +21,8 @@ export const levels = [
 	aliceandbob4,
 	family,
 	equality2,
+	rainyday,
+	mirror,
 	lol,
 	sandbox,
 ];

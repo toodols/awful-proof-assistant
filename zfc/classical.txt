@@ -1,0 +1,227 @@
+@require "choice.txt"
+@require "constructions.txt"
+
+zero_one : Set := pair empty (single empty);
+
+mem_zero_one_zero : mem empty zero_one :=
+	iff.mpr (mem empty zero_one) (or (eq Set empty empty) (eq Set empty (single empty)))
+		(mem_pair empty (single empty) empty)
+		(or.inl (eq Set empty empty) (eq Set empty (single empty)) (eq.refl Set empty));
+
+mem_zero_one_one : mem (single empty) zero_one :=
+	iff.mpr (mem (single empty) zero_one)
+		(or (eq Set (single empty) empty) (eq Set (single empty) (single empty)))
+		(mem_pair empty (single empty) (single empty))
+		(or.inr (eq Set (single empty) empty) (eq Set (single empty) (single empty))
+			(eq.refl Set (single empty)));
+
+empty_ne_single : not (eq Set empty (single empty)) :=
+	(h : eq Set empty (single empty)) =>
+	not_mem_empty empty
+		(eq.subst Set (single empty) empty ((t : Set) => mem empty t)
+			(eq.symm Set empty (single empty) h)
+			(iff.mpr (mem empty (single empty)) (eq Set empty empty)
+				(mem_single empty empty) (eq.refl Set empty)));
+
+zero_set : Prop -> Set :=
+	(p : Prop) => separate ((x : Set) => or (eq Set x empty) p) zero_one;
+
+one_set : Prop -> Set :=
+	(p : Prop) => separate ((x : Set) => or (eq Set x (single empty)) p) zero_one;
+
+zero_in_zero_set : (p : Prop) -> mem empty (zero_set p) :=
+	(p : Prop) =>
+	iff.mpr (mem empty (zero_set p)) (and (mem empty zero_one) (or (eq Set empty empty) p))
+		(mem_separate ((x : Set) => or (eq Set x empty) p) zero_one empty)
+		(and.intro (mem empty zero_one) (or (eq Set empty empty) p)
+			mem_zero_one_zero
+			(or.inl (eq Set empty empty) p (eq.refl Set empty)));
+
+one_in_one_set : (p : Prop) -> mem (single empty) (one_set p) :=
+	(p : Prop) =>
+	iff.mpr (mem (single empty) (one_set p))
+		(and (mem (single empty) zero_one) (or (eq Set (single empty) (single empty)) p))
+		(mem_separate ((x : Set) => or (eq Set x (single empty)) p) zero_one (single empty))
+		(and.intro (mem (single empty) zero_one) (or (eq Set (single empty) (single empty)) p)
+			mem_zero_one_one
+			(or.inl (eq Set (single empty) (single empty)) p (eq.refl Set (single empty))));
+
+zero_set_cases : (p : Prop) -> (x : Set) -> mem x (zero_set p) -> or (eq Set x empty) p :=
+	(p : Prop) => (x : Set) => (m : mem x (zero_set p)) =>
+	and.right (mem x zero_one) (or (eq Set x empty) p)
+		(iff.mp (mem x (zero_set p)) (and (mem x zero_one) (or (eq Set x empty) p))
+			(mem_separate ((y : Set) => or (eq Set y empty) p) zero_one x) m);
+
+one_set_cases : (p : Prop) -> (x : Set) -> mem x (one_set p) -> or (eq Set x (single empty)) p :=
+	(p : Prop) => (x : Set) => (m : mem x (one_set p)) =>
+	and.right (mem x zero_one) (or (eq Set x (single empty)) p)
+		(iff.mp (mem x (one_set p)) (and (mem x zero_one) (or (eq Set x (single empty)) p))
+			(mem_separate ((y : Set) => or (eq Set y (single empty)) p) zero_one x) m);
+
+zero_set_in_zero_one : (p : Prop) -> (x : Set) -> mem x (zero_set p) -> mem x zero_one :=
+	(p : Prop) => (x : Set) => (m : mem x (zero_set p)) =>
+	and.left (mem x zero_one) (or (eq Set x empty) p)
+		(iff.mp (mem x (zero_set p)) (and (mem x zero_one) (or (eq Set x empty) p))
+			(mem_separate ((y : Set) => or (eq Set y empty) p) zero_one x) m);
+
+one_set_in_zero_one : (p : Prop) -> (x : Set) -> mem x (one_set p) -> mem x zero_one :=
+	(p : Prop) => (x : Set) => (m : mem x (one_set p)) =>
+	and.left (mem x zero_one) (or (eq Set x (single empty)) p)
+		(iff.mp (mem x (one_set p)) (and (mem x zero_one) (or (eq Set x (single empty)) p))
+			(mem_separate ((y : Set) => or (eq Set y (single empty)) p) zero_one x) m);
+
+zero_set_eq_one_set : (p : Prop) -> p -> eq Set (zero_set p) (one_set p) :=
+	(p : Prop) => (hp : p) =>
+	extensionality (zero_set p) (one_set p) ((x : Set) =>
+		iff.intro (mem x (zero_set p)) (mem x (one_set p))
+			((m : mem x (zero_set p)) =>
+				iff.mpr (mem x (one_set p))
+					(and (mem x zero_one) (or (eq Set x (single empty)) p))
+					(mem_separate ((y : Set) => or (eq Set y (single empty)) p) zero_one x)
+					(and.intro (mem x zero_one) (or (eq Set x (single empty)) p)
+						(zero_set_in_zero_one p x m)
+						(or.inr (eq Set x (single empty)) p hp)))
+			((m : mem x (one_set p)) =>
+				iff.mpr (mem x (zero_set p))
+					(and (mem x zero_one) (or (eq Set x empty) p))
+					(mem_separate ((y : Set) => or (eq Set y empty) p) zero_one x)
+					(and.intro (mem x zero_one) (or (eq Set x empty) p)
+						(one_set_in_zero_one p x m)
+						(or.inr (eq Set x empty) p hp))));
+
+zero_set_meets_one_set : (p : Prop) -> (z : Set) -> mem z (zero_set p) -> mem z (one_set p) ->
+	eq Set (zero_set p) (one_set p) :=
+	(p : Prop) => (z : Set) => (mz : mem z (zero_set p)) => (mo : mem z (one_set p)) =>
+	or.elim (eq Set z empty) p (eq Set (zero_set p) (one_set p))
+		(zero_set_cases p z mz)
+		((ze : eq Set z empty) =>
+			or.elim (eq Set z (single empty)) p (eq Set (zero_set p) (one_set p))
+				(one_set_cases p z mo)
+				((zs : eq Set z (single empty)) =>
+					false.elim (eq Set (zero_set p) (one_set p))
+						(empty_ne_single (eq.trans Set empty z (single empty) (eq.symm Set z empty ze) zs)))
+				((hp : p) => zero_set_eq_one_set p hp))
+		((hp : p) => zero_set_eq_one_set p hp);
+
+excluded_middle : (p : Prop) -> or p (not p) :=
+	(p : Prop) =>
+	exists.elim Set
+		((c : Set) => (x : Set) -> mem x (pair (zero_set p) (one_set p)) ->
+			exists Set ((z : Set) =>
+				and (and (mem z x) (mem z c))
+					((w : Set) -> and (mem w x) (mem w c) -> eq Set w z)))
+		(or p (not p))
+		(choice (pair (zero_set p) (one_set p))
+			((x : Set) => (hx : mem x (pair (zero_set p) (one_set p))) =>
+				or.elim (eq Set x (zero_set p)) (eq Set x (one_set p))
+					(exists Set ((y : Set) => mem y x))
+					(iff.mp (mem x (pair (zero_set p) (one_set p)))
+						(or (eq Set x (zero_set p)) (eq Set x (one_set p)))
+						(mem_pair (zero_set p) (one_set p) x) hx)
+					((xz : eq Set x (zero_set p)) =>
+						exists.intro Set ((y : Set) => mem y x) empty
+							(eq.subst Set (zero_set p) x ((r : Set) => mem empty r)
+								(eq.symm Set x (zero_set p) xz) (zero_in_zero_set p)))
+					((xo : eq Set x (one_set p)) =>
+						exists.intro Set ((y : Set) => mem y x) (single empty)
+							(eq.subst Set (one_set p) x ((r : Set) => mem (single empty) r)
+								(eq.symm Set x (one_set p) xo) (one_in_one_set p))))
+			((x : Set) => (y : Set) => (z : Set) =>
+			(hx : mem x (pair (zero_set p) (one_set p))) =>
+			(hy : mem y (pair (zero_set p) (one_set p))) =>
+			(zx : mem z x) => (zy : mem z y) =>
+				or.elim (eq Set x (zero_set p)) (eq Set x (one_set p)) (eq Set x y)
+					(iff.mp (mem x (pair (zero_set p) (one_set p)))
+						(or (eq Set x (zero_set p)) (eq Set x (one_set p)))
+						(mem_pair (zero_set p) (one_set p) x) hx)
+					((xz : eq Set x (zero_set p)) =>
+						or.elim (eq Set y (zero_set p)) (eq Set y (one_set p)) (eq Set x y)
+							(iff.mp (mem y (pair (zero_set p) (one_set p)))
+								(or (eq Set y (zero_set p)) (eq Set y (one_set p)))
+								(mem_pair (zero_set p) (one_set p) y) hy)
+							((yz : eq Set y (zero_set p)) =>
+								eq.trans Set x (zero_set p) y xz (eq.symm Set y (zero_set p) yz))
+							((yo : eq Set y (one_set p)) =>
+								eq.trans Set x (zero_set p) y xz
+									(eq.trans Set (zero_set p) (one_set p) y
+										(zero_set_meets_one_set p z
+											(eq.subst Set x (zero_set p) ((r : Set) => mem z r) xz zx)
+											(eq.subst Set y (one_set p) ((r : Set) => mem z r) yo zy))
+										(eq.symm Set y (one_set p) yo))))
+					((xo : eq Set x (one_set p)) =>
+						or.elim (eq Set y (zero_set p)) (eq Set y (one_set p)) (eq Set x y)
+							(iff.mp (mem y (pair (zero_set p) (one_set p)))
+								(or (eq Set y (zero_set p)) (eq Set y (one_set p)))
+								(mem_pair (zero_set p) (one_set p) y) hy)
+							((yz : eq Set y (zero_set p)) =>
+								eq.trans Set x (one_set p) y xo
+									(eq.trans Set (one_set p) (zero_set p) y
+										(eq.symm Set (zero_set p) (one_set p)
+											(zero_set_meets_one_set p z
+												(eq.subst Set y (zero_set p) ((r : Set) => mem z r) yz zy)
+												(eq.subst Set x (one_set p) ((r : Set) => mem z r) xo zx)))
+										(eq.symm Set y (zero_set p) yz)))
+							((yo : eq Set y (one_set p)) =>
+								eq.trans Set x (one_set p) y xo (eq.symm Set y (one_set p) yo)))))
+		((c : Set) => (hc : (x : Set) -> mem x (pair (zero_set p) (one_set p)) ->
+			exists Set ((z : Set) =>
+				and (and (mem z x) (mem z c))
+					((w : Set) -> and (mem w x) (mem w c) -> eq Set w z))) =>
+		exists.elim Set
+			((z : Set) =>
+				and (and (mem z (zero_set p)) (mem z c))
+					((w : Set) -> and (mem w (zero_set p)) (mem w c) -> eq Set w z))
+			(or p (not p))
+			(hc (zero_set p)
+				(iff.mpr (mem (zero_set p) (pair (zero_set p) (one_set p)))
+					(or (eq Set (zero_set p) (zero_set p)) (eq Set (zero_set p) (one_set p)))
+					(mem_pair (zero_set p) (one_set p) (zero_set p))
+					(or.inl (eq Set (zero_set p) (zero_set p)) (eq Set (zero_set p) (one_set p))
+						(eq.refl Set (zero_set p)))))
+			((x : Set) => (hx : and (and (mem x (zero_set p)) (mem x c))
+					((w : Set) -> and (mem w (zero_set p)) (mem w c) -> eq Set w x)) =>
+		exists.elim Set
+			((z : Set) =>
+				and (and (mem z (one_set p)) (mem z c))
+					((w : Set) -> and (mem w (one_set p)) (mem w c) -> eq Set w z))
+			(or p (not p))
+			(hc (one_set p)
+				(iff.mpr (mem (one_set p) (pair (zero_set p) (one_set p)))
+					(or (eq Set (one_set p) (zero_set p)) (eq Set (one_set p) (one_set p)))
+					(mem_pair (zero_set p) (one_set p) (one_set p))
+					(or.inr (eq Set (one_set p) (zero_set p)) (eq Set (one_set p) (one_set p))
+						(eq.refl Set (one_set p)))))
+			((y : Set) => (hy : and (and (mem y (one_set p)) (mem y c))
+					((w : Set) -> and (mem w (one_set p)) (mem w c) -> eq Set w y)) =>
+		or.elim (eq Set x empty) p (or p (not p))
+			(zero_set_cases p x
+				(and.left (mem x (zero_set p)) (mem x c)
+					(and.left (and (mem x (zero_set p)) (mem x c))
+						((w : Set) -> and (mem w (zero_set p)) (mem w c) -> eq Set w x) hx)))
+			((xe : eq Set x empty) =>
+				or.elim (eq Set y (single empty)) p (or p (not p))
+					(one_set_cases p y
+						(and.left (mem y (one_set p)) (mem y c)
+							(and.left (and (mem y (one_set p)) (mem y c))
+								((w : Set) -> and (mem w (one_set p)) (mem w c) -> eq Set w y) hy)))
+					((ys : eq Set y (single empty)) =>
+						or.inr p (not p)
+							((hp : p) =>
+								empty_ne_single
+									(eq.trans Set empty x (single empty) (eq.symm Set x empty xe)
+										(eq.trans Set x y (single empty)
+											(eq.symm Set y x
+												(and.right (and (mem x (zero_set p)) (mem x c))
+													((w : Set) -> and (mem w (zero_set p)) (mem w c) -> eq Set w x) hx y
+													(and.intro (mem y (zero_set p)) (mem y c)
+														(eq.subst Set (one_set p) (zero_set p) ((r : Set) => mem y r)
+															(eq.symm Set (zero_set p) (one_set p) (zero_set_eq_one_set p hp))
+															(and.left (mem y (one_set p)) (mem y c)
+																(and.left (and (mem y (one_set p)) (mem y c))
+																	((w : Set) -> and (mem w (one_set p)) (mem w c) -> eq Set w y) hy)))
+														(and.right (mem y (one_set p)) (mem y c)
+															(and.left (and (mem y (one_set p)) (mem y c))
+																((w : Set) -> and (mem w (one_set p)) (mem w c) -> eq Set w y) hy)))))
+											ys))))
+					((hp : p) => or.inl p (not p) hp))
+			((hp : p) => or.inl p (not p) hp))));

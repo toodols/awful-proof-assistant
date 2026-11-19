@@ -1,0 +1,67 @@
+@require "logic.txt"
+
+@axiom
+Set : Type;
+
+@axiom
+mem : Set -> Set -> Prop;
+
+@axiom
+extensionality : (a : Set) -> (b : Set) ->
+	((x : Set) -> iff (mem x a) (mem x b)) -> eq Set a b;
+
+subset : Set -> Set -> Prop :=
+	(a : Set) => (b : Set) => (x : Set) -> mem x a -> mem x b;
+
+@axiom
+pairing : (a : Set) -> (b : Set) ->
+	exists Set ((p : Set) => (x : Set) ->
+		iff (mem x p) (or (eq Set x a) (eq Set x b)));
+
+@axiom
+union_exists : (a : Set) ->
+	exists Set ((u : Set) => (x : Set) ->
+		iff (mem x u)
+			(exists Set ((y : Set) => and (mem y a) (mem x y))));
+
+@axiom
+power_exists : (a : Set) ->
+	exists Set ((p : Set) => (x : Set) ->
+		iff (mem x p) (subset x a));
+
+
+@axiom
+separation : (P : Set -> Prop) -> (a : Set) ->
+	exists Set ((s : Set) => (x : Set) ->
+		iff (mem x s) (and (mem x a) (P x)));
+
+
+@axiom
+replacement : (R : Set -> Set -> Prop) -> (a : Set) ->
+	((x : Set) -> mem x a ->
+		exists Set ((y : Set) => and (R x y) ((z : Set) -> R x z -> eq Set z y))) ->
+	exists Set ((b : Set) => (y : Set) ->
+		iff (mem y b)
+			(exists Set ((x : Set) => and (mem x a) (R x y))));
+
+is_empty : Set -> Prop :=
+	(e : Set) => (x : Set) -> not (mem x e);
+
+@axiom
+infinity :
+	exists Set ((i : Set) =>
+		and (exists Set ((e : Set) => and (mem e i) (is_empty e)))
+			((x : Set) -> mem x i ->
+				exists Set ((s : Set) =>
+					and (mem s i)
+						((z : Set) -> iff (mem z s)
+							(or (mem z x) (eq Set z x))))));
+
+@axiom
+regularity : (a : Set) -> exists Set ((x : Set) => mem x a) ->
+	exists Set ((x : Set) =>
+		and (mem x a)
+			((y : Set) -> mem y x -> not (mem y a)));
+
+transitive : Set -> Prop :=
+        (x : Set) => (y : Set) -> mem y x -> subset y x;

@@ -37,10 +37,10 @@ nat_coprime_one : (num : Nat) -> Nat.Coprime num Nat.one :=
 		(p : Nat) => (hp : Nat.Prime p) => (hdpn : Nat.Dvd p num) => (hdp1 : Nat.Dvd p Nat.one) => 
 
 		// p | 1 is just false, so p | n is irrelevant
-		// hdp1 expands to Exists Nat ((k : Nat) => Eq Nat (Nat.Mul p k) Nat.one);
+		// hdp1 expands to Exists Nat ((k : Nat) => Eq Nat (Nat.mul p k) Nat.one);
 
-		Exists.elim Nat ((k : Nat) => Eq Nat (Nat.Mul p k) Nat.one) False hdp1
-		((k : Nat) => (ek : Eq Nat (Nat.Mul p k) Nat.one) =>
+		Exists.elim Nat ((k : Nat) => Eq Nat (Nat.mul p k) Nat.one) False hdp1
+		((k : Nat) => (ek : Eq Nat (Nat.mul p k) Nat.one) =>
 			Nat.mul_ne_succ_mul p k Nat.zero
 				(Prop.And.left (Nat.Lt (Nat.succ Nat.zero) p)
 					((d : Nat) -> Nat.Dvd d p ->
@@ -100,8 +100,8 @@ Rat.add : Rat -> Rat -> Rat :=
 				((c : Int) => (d : Nat) => (hd : NotEq Nat d Nat.zero) =>
 					(rc : Nat.Coprime (Int.abs_nat c) d) =>
 					Rat.mk
-						(Int.Add (Int.mul_nat a d) (Int.mul_nat c b))
-						(Nat.Mul b d)
+						(Int.add (Int.mul_nat a d) (Int.mul_nat c b))
+						(Nat.mul b d)
 						(Nat.mul_ne_zero b d hb hd))
 				y)
 		x;
