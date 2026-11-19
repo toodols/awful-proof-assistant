@@ -71,3 +71,6 @@ Eq.congr : (A : Type) -> (B : Type) -> (f : A -> B) -> (a : A) -> (b : A) -> Eq 
     	(Eq.refl B (f a))
     	b
     	p;
+
+NotEq : (A : Type) -> (x : A) -> (y : A) -> Prop :=
+	(A : Type) => (x : A) => (y : A) => (Prop.Not (Eq A x y));

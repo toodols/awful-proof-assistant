@@ -11,9 +11,9 @@
 Rat : Type;
 
 @intro(Rat)
-Rat.intro : (num : Int) -> (den : Nat) -> (den_nz : Prop.Not (Eq Nat den Nat.zero)) -> (reduced : Nat.Coprime (Int.abs_nat num) den ) -> Rat;
+Rat.intro : (num : Int) -> (den : Nat) -> (den_nz : NotEq Nat den Nat.zero) -> (reduced : Nat.Coprime (Int.abs_nat num) den ) -> Rat;
 
-one_neq_zero : Eq Nat Nat.one Nat.zero -> False :=
+one_neq_zero : NotEq Nat Nat.one Nat.zero :=
 	(h : Eq Nat Nat.one Nat.zero) =>
 		Nat.zero_ne_succ
 			Nat.zero
