@@ -136,11 +136,11 @@ mem_succ : (x : Set) -> (z : Set) ->
 								(iff.mpr (mem z (single x)) (eq Set z x) (mem_single x z) zx)))));
 
 
-separate : (Set -> Prop) -> Set -> Set :=
-	(P : Set -> Prop) => (a : Set) =>
+separate : Pred -> Set -> Set :=
+	(P : Pred) => (a : Set) =>
 	collect ((x : Set) => and (mem x a) (P x)) (separation P a);
 
-mem_separate : (P : Set -> Prop) -> (a : Set) -> (x : Set) ->
+mem_separate : (P : Pred) -> (a : Set) -> (x : Set) ->
 	iff (mem x (separate P a)) (and (mem x a) (P x)) :=
-	(P : Set -> Prop) => (a : Set) =>
+	(P : Pred) => (a : Set) =>
 	collect_spec ((x : Set) => and (mem x a) (P x)) (separation P a);

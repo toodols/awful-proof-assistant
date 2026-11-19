@@ -3,6 +3,8 @@
 @axiom
 Set : Type;
 
+Pred : Type := Set -> Prop;
+
 @axiom
 mem : Set -> Set -> Prop;
 
@@ -31,7 +33,7 @@ power_exists : (a : Set) ->
 
 
 @axiom
-separation : (P : Set -> Prop) -> (a : Set) ->
+separation : (P : Pred) -> (a : Set) ->
 	exists Set ((s : Set) => (x : Set) ->
 		iff (mem x s) (and (mem x a) (P x)));
 
@@ -44,7 +46,7 @@ replacement : (R : Set -> Set -> Prop) -> (a : Set) ->
 		iff (mem y b)
 			(exists Set ((x : Set) => and (mem x a) (R x y))));
 
-is_empty : Set -> Prop :=
+is_empty : Pred :=
 	(e : Set) => (x : Set) -> not (mem x e);
 
 @axiom
@@ -63,5 +65,5 @@ regularity : (a : Set) -> exists Set ((x : Set) => mem x a) ->
 		and (mem x a)
 			((y : Set) -> mem y x -> not (mem y a)));
 
-transitive : Set -> Prop :=
+transitive : Pred :=
         (x : Set) => (y : Set) -> mem y x -> subset y x;

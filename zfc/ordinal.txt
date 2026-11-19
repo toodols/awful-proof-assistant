@@ -1,6 +1,6 @@
 @require "constructions.txt"
 
-linear : Set -> Prop :=
+linear : Pred :=
         (x : Set) => (a : Set) -> (b : Set) -> mem a x -> mem b x ->
                 or (mem a b) (or (eq Set a b) (mem b a));
 
@@ -10,15 +10,15 @@ one : Set := succ zero;
 
 two : Set := succ one;
 
-ordinal : Set -> Prop :=
+ordinal : Pred :=
 	(x : Set) => and (transitive x) (linear x);
 
-natural : Set -> Prop :=
+natural : Pred :=
 	(n : Set) => and (ordinal n)
 		((m : Set) -> or (mem m n) (eq Set m n) ->
 			or (eq Set m zero) (exists Set ((p : Set) => eq Set m (succ p))));
 
-is_omega : Set -> Prop :=
+is_omega : Pred :=
 	(w : Set) => (x : Set) -> iff (mem x w) (natural x);
 
 zero_ordinal : ordinal zero :=

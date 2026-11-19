@@ -1,34 +1,34 @@
 @require "set.txt"
 
-unique : (Set -> Prop) -> Prop :=
-	(P : Set -> Prop) =>
+unique : Pred -> Prop :=
+	(P : Pred) =>
 	exists Set ((x : Set) => and (P x) ((y : Set) -> P y -> eq Set y x));
 
 @axiom
-the : (P : Set -> Prop) -> unique P -> Set;
+the : (P : Pred) -> unique P -> Set;
 
 @axiom
-the_spec : (P : Set -> Prop) -> (h : unique P) -> P (the P h);
+the_spec : (P : Pred) -> (h : unique P) -> P (the P h);
 
 // ---- building sets with `the` ----
 //
 // Each existence axiom says "there is a set whose members are exactly the x
 // with R x". Extensionality makes that set unique, and `the` names it.
 
-members : (Set -> Prop) -> Set -> Prop :=
-	(R : Set -> Prop) => (s : Set) => (x : Set) -> iff (mem x s) (R x);
+members : Pred -> Pred :=
+	(R : Pred) => (s : Set) => (x : Set) -> iff (mem x s) (R x);
 
-members_eq : (R : Set -> Prop) -> (a : Set) -> (b : Set) ->
+members_eq : (R : Pred) -> (a : Set) -> (b : Set) ->
 	members R a -> members R b -> eq Set a b :=
-	(R : Set -> Prop) => (a : Set) => (b : Set) =>
+	(R : Pred) => (a : Set) => (b : Set) =>
 	(ha : members R a) => (hb : members R b) =>
 	extensionality a b ((x : Set) =>
 		iff.intro (mem x a) (mem x b)
 			((m : mem x a) => iff.mpr (mem x b) (R x) (hb x) (iff.mp (mem x a) (R x) (ha x) m))
 			((m : mem x b) => iff.mpr (mem x a) (R x) (ha x) (iff.mp (mem x b) (R x) (hb x) m)));
 
-members_unique : (R : Set -> Prop) -> exists Set (members R) -> unique (members R) :=
-	(R : Set -> Prop) => (h : exists Set (members R)) =>
+members_unique : (R : Pred) -> exists Set (members R) -> unique (members R) :=
+	(R : Pred) => (h : exists Set (members R)) =>
 	exists.elim Set (members R) (unique (members R)) h
 		((s : Set) => (hs : members R s) =>
 			exists.intro Set
@@ -37,11 +37,11 @@ members_unique : (R : Set -> Prop) -> exists Set (members R) -> unique (members 
 				(and.intro (members R s) ((y : Set) -> members R y -> eq Set y s) hs
 					((y : Set) => (hy : members R y) => members_eq R y s hy hs)));
 
-collect : (R : Set -> Prop) -> exists Set (members R) -> Set :=
-	(R : Set -> Prop) => (h : exists Set (members R)) =>
+collect : (R : Pred) -> exists Set (members R) -> Set :=
+	(R : Pred) => (h : exists Set (members R)) =>
 	the (members R) (members_unique R h);
 
-collect_spec : (R : Set -> Prop) -> (h : exists Set (members R)) ->
+collect_spec : (R : Pred) -> (h : exists Set (members R)) ->
 	members R (collect R h) :=
-	(R : Set -> Prop) => (h : exists Set (members R)) =>
+	(R : Pred) => (h : exists Set (members R)) =>
 	the_spec (members R) (members_unique R h);
