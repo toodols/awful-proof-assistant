@@ -109,6 +109,8 @@ export type Binding = { type: "binding"; ident: string; ty: Expr };
 
 export type Expr =
 	| { type: "ident"; ident: string }
+	// a bare numeral, e.g. `3` - sugar for a @lang(Nat) type's native value
+	| { type: "nat_lit"; value: bigint }
 	| { type: "application"; fun: Expr; value: Expr }
 	| { type: "lambda"; head: Expr | Binding; tail: Expr }
 	| { type: "pi"; head: Expr | Binding; tail: Expr }
@@ -210,9 +212,13 @@ export function parse(source: string): ParseResult {
 		return e;
 	}
 
+	const DIGITS = /^[0-9]+$/;
+
 	function parse_atom(): Expr {
 		if (at("ident")) {
-			return { type: "ident", ident: advance().raw };
+			const raw = advance().raw;
+			if (DIGITS.test(raw)) return { type: "nat_lit", value: BigInt(raw) };
+			return { type: "ident", ident: raw };
 		}
 		if (at("(")) {
 			advance();

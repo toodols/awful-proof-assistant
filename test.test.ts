@@ -844,3 +844,131 @@ test("a declaration gets exactly one marker", async () => {
 		`),
 	).toThrow(/but a declaration gets exactly one marker/);
 });
+
+// ---------------------------------------------------------------------------
+// Strict positivity
+//
+// @inductive is a claim the checker verifies, not an assumption: without
+// this, marking any old shape @inductive would be as unchecked as @axiom,
+// just without saying so.
+// ---------------------------------------------------------------------------
+
+test("a constructor may not put the type to the left of an arrow", async () => {
+	const statements = await expand(
+		"main.txt",
+		async () => `
+		@inductive
+		Bad : Type;
+		@intro(Bad)
+		Bad.intro : (Bad -> Bad) -> Bad;
+		`,
+	);
+	// (Bad -> Bad) -> Bad is Curry's paradox in disguise: Bad.intro applied to
+	// itself, by a Y-combinator style fixed point, proves anything at all
+	expect(() => check_program(new_globals(), statements)).toThrow(
+		/not strictly positive/,
+	);
+});
+
+test("a directly self-recursive constructor is still fine", async () => {
+	const statements = await expand(
+		"main.txt",
+		async () => `
+		@inductive
+		N : Type;
+		@intro(N)
+		N.z : N;
+		@intro(N)
+		N.s : N -> N;
+		`,
+	);
+	expect(() => check_program(new_globals(), statements)).not.toThrow();
+});
+
+// ---------------------------------------------------------------------------
+// @lang(Nat)
+//
+// A Peano-shaped inductive marked @lang(Nat) gets a native bigint behind it:
+// numerals type-check as that type, defeq to the constructor chain they
+// abbreviate, and a recursor fires on a numeral exactly as it would on a
+// chain of Nat.succ.
+// ---------------------------------------------------------------------------
+
+const LANG_NAT = `
+	@inductive
+	@lang(Nat)
+	Nat : Type;
+	@intro(Nat)
+	Nat.zero : Nat;
+	@intro(Nat)
+	Nat.succ : Nat -> Nat;
+	@rec(Nat)
+	Nat.rec :
+		(motive : Nat -> Type) ->
+		(case_zero : motive Nat.zero) ->
+		(case_succ : (n : Nat) -> motive n -> motive (Nat.succ n)) ->
+		(target : Nat) ->
+		motive target;
+	@iota(Nat)
+	Nat.rec motive case_zero case_succ Nat.zero : motive Nat.zero := case_zero;
+	@iota(Nat)
+	Nat.rec motive case_zero case_succ (Nat.succ n) : motive (Nat.succ n) :=
+		case_succ n (Nat.rec motive case_zero case_succ n);
+	@axiom
+	Eq : (A : Type) -> A -> A -> Prop;
+	@axiom
+	Eq.refl : (A : Type) -> (x : A) -> Eq A x x;
+	Nat.Add : Nat -> Nat -> Nat := (a : Nat) => (b : Nat) =>
+		Nat.rec ((n : Nat) => Nat) a ((n : Nat) => (ih : Nat) => Nat.succ ih) b;
+`;
+
+test("a @lang(Nat) numeral defeqs the constructor chain it abbreviates", async () => {
+	const statements = await expand(
+		"main.txt",
+		async () =>
+			LANG_NAT +
+			`
+			three_lit : Nat := 3;
+			three_chain : Nat := Nat.succ (Nat.succ (Nat.succ Nat.zero));
+			same : Eq Nat three_lit three_chain := Eq.refl Nat three_lit;
+			`,
+	);
+	expect(() => check_program(new_globals(), statements)).not.toThrow();
+});
+
+test("a recursor fires on a @lang(Nat) numeral", async () => {
+	const statements = await expand(
+		"main.txt",
+		async () =>
+			LANG_NAT +
+			`
+			sum : Eq Nat (Nat.Add 2 3) 5 := Eq.refl Nat 5;
+			`,
+	);
+	expect(() => check_program(new_globals(), statements)).not.toThrow();
+});
+
+test("a wrong @lang(Nat) numeral is still caught", async () => {
+	const statements = await expand(
+		"main.txt",
+		async () =>
+			LANG_NAT +
+			`
+			bad : Eq Nat 2 3 := Eq.refl Nat 2;
+			`,
+	);
+	expect(() => check_program(new_globals(), statements)).toThrow();
+});
+
+test("@lang only marks an @inductive declaration, and only Nat", async () => {
+	const check = async (source: string) => {
+		const statements = await expand("main.txt", async () => source);
+		return () => check_program(new_globals(), statements);
+	};
+	expect(
+		await check(`@axiom\n@lang(Nat)\nNat : Type;`),
+	).toThrow(/@lang\(Nat\) may only mark an @inductive declaration/);
+	expect(
+		await check(`@inductive\n@lang(Str)\nS : Type;`),
+	).toThrow(/@lang only supports Nat/);
+});

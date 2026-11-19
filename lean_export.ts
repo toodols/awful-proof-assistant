@@ -677,6 +677,11 @@ type Env = {
 	// a recursor we declared at one sort, and the polymorphic constant plus
 	// level it becomes on the way out
 	recursors: Map<string, { name: string; levels: Level[] }>;
+	// the zero and succ constructors @lang(Nat) named, if any: the export
+	// format has no literal expression kind, so a numeral becomes that many
+	// nested applications of succ to zero, same as it would unreduced in the
+	// source language.
+	lang_nat: { zero: string; succ: string } | null;
 };
 
 // The universe level `u` such that `ty : Sort u`. Only used to instantiate
@@ -767,6 +772,18 @@ function resolve(env: Env, expr: Expr, bound: (string | null)[]): Core {
 		return { k: expr.type === "lambda" ? "lam" : "pi", name, dom, body };
 	} else if (expr.type === "binding") {
 		throw new Error("found a binding outside lambda or pi");
+	} else if (expr.type === "nat_lit") {
+		// the export format has no literal expression kind, so a numeral goes
+		// out the same way it would if the source had spelled it in unary
+		if (!env.lang_nat) {
+			throw new Error("a numeral has no @lang(Nat) type in scope");
+		}
+		const { zero, succ } = env.lang_nat;
+		let out: Core = { k: "const", name: zero, levels: [] };
+		for (let i = 0n; i < expr.value; i++) {
+			out = { k: "app", fun: { k: "const", name: succ, levels: [] }, arg: out };
+		}
+		return out;
 	}
 	throw new Error("unreachable");
 }
@@ -1027,16 +1044,19 @@ export function export_to_lean(
 		emitted: new Set(),
 		uses_sorry: false,
 		recursors: new Map(),
+		lang_nat: null,
 	};
 	const clone = (e: Env): Env => ({
 		globals: new Map(e.globals),
 		emitted: new Set(e.emitted),
 		uses_sorry: e.uses_sorry,
 		recursors: new Map(e.recursors),
+		lang_nat: e.lang_nat,
 	});
 
 	// @inductive, with the @intro and @rec declarations that named it
 	const groups = new Map<string, Group>();
+	let lang_nat_of: string | null = null;
 	for (const decl of decls) {
 		for (const d of decl.directives) {
 			if (d.name === "inductive") {
@@ -1045,7 +1065,15 @@ export function export_to_lean(
 				groups.get(d.arg)?.ctors.push(decl);
 			} else if (d.name === "rec" && d.arg !== null) {
 				groups.get(d.arg)?.instances.push(decl);
+			} else if (d.name === "lang" && d.arg === "Nat") {
+				lang_nat_of = decl.name;
 			}
+		}
+	}
+	if (lang_nat_of !== null) {
+		const ctors = groups.get(lang_nat_of)?.ctors;
+		if (ctors && ctors.length >= 2) {
+			env.lang_nat = { zero: ctors[0]!.name, succ: ctors[1]!.name };
 		}
 	}
 	// names emitted as part of an inductive block rather than on their own

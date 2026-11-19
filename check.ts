@@ -24,7 +24,9 @@ export type Term =
 	| { k: "global"; name: string }
 	| { k: "app"; fn: Term; arg: Term }
 	| { k: "lam"; dom: Term; body: Term }
-	| { k: "pi"; dom: Term; body: Term };
+	| { k: "pi"; dom: Term; body: Term }
+	// a native bigint value of whichever type @lang(Nat) named
+	| { k: "nat"; n: bigint };
 
 type Local = Term & { k: "local" };
 
@@ -181,6 +183,8 @@ function print(t: Term): string {
 			return `(fun (_ : ${print(t.dom)}) => ...)`;
 		case "pi":
 			return `(${print(t.dom)} -> ...)`;
+		case "nat":
+			return String(t.n);
 	}
 }
 
@@ -210,9 +214,28 @@ type Global = {
 	num_params?: number;
 	ctor_of?: string;
 	rec_info?: RecInfo;
+	// set on a constructor once it is confirmed to have the shape @lang(Nat)
+	// needs: which native value whnf turns it into (or apart into), on the
+	// way to and from a `nat` Term.
+	lang_role?: "zero" | "succ";
 };
 
 export type Globals = Map<string, Global>;
+
+// Which inductive, if any, @lang(Nat) named in this program - kept out of
+// the Globals map itself (a plain `Map<string, Global>`, which every caller
+// already constructs and passes around) so the exported type does not have
+// to grow a field nothing else needs to know about.
+type LangInfo = { nat?: string };
+const lang_registry = new WeakMap<Globals, LangInfo>();
+function lang_info(globals: Globals): LangInfo {
+	let info = lang_registry.get(globals);
+	if (!info) {
+		info = {};
+		lang_registry.set(globals, info);
+	}
+	return info;
+}
 
 export function new_globals(): Globals {
 	return new Map();
@@ -226,11 +249,41 @@ function rec_arity(info: RecInfo): number {
 // Reduction and definitional equality
 // ---------------------------------------------------------------------------
 
+// A `nat`/`str` value, spelled out as the constructor application it stands
+// for - one layer only (its own fields stay `nat`/`str` too), so recursor
+// matching can treat a native value exactly like an ordinary constructor
+// application without knowing natives exist.
+function native_ctor_spine(
+	globals: Globals,
+	ind_name: string,
+	target: Term,
+): { head: Term; args: Term[] } | null {
+	if (target.k !== "nat") return null;
+	const ctors = globals.get(ind_name)?.ctors;
+	const zero = ctors?.[0];
+	const succ = ctors?.[1];
+	if (!zero || !succ) return null;
+	if (target.n <= 0n) return { head: { k: "global", name: zero }, args: [] };
+	return {
+		head: { k: "global", name: succ },
+		args: [{ k: "nat", n: target.n - 1n }],
+	};
+}
+
 function whnf(globals: Globals, term: Term): Term {
 	const { head, args } = unwind(term);
 
 	if (head.k === "global") {
 		const g = globals.get(head.name);
+		if (g?.lang_role === "zero") {
+			return apply({ k: "nat", n: 0n }, args);
+		}
+		if (g?.lang_role === "succ" && args.length >= 1) {
+			const n = whnf(globals, args[0]!);
+			if (n.k === "nat") {
+				return whnf(globals, apply({ k: "nat", n: n.n + 1n }, args.slice(1)));
+			}
+		}
 		if (g?.def) {
 			return whnf(globals, apply(g.def, args));
 		}
@@ -239,7 +292,8 @@ function whnf(globals: Globals, term: Term): Term {
 			const arity = rec_arity(info);
 			if (args.length >= arity) {
 				const target = whnf(globals, args[arity - 1]!);
-				const { head: th, args: cargs } = unwind(target);
+				const spine = native_ctor_spine(globals, info.ind, target) ?? unwind(target);
+				const { head: th, args: cargs } = spine;
 				if (th.k === "global") {
 					const rule = info.rules.get(th.name);
 					if (rule) {
@@ -285,6 +339,7 @@ function structural_defeq(globals: Globals, wa: Term, wb: Term): boolean {
 	if (wa.k === "local" && wb.k === "local") return wa.id === wb.id;
 	if (wa.k === "global" && wb.k === "global") return wa.name === wb.name;
 	if (wa.k === "bvar" && wb.k === "bvar") return wa.i === wb.i;
+	if (wa.k === "nat" && wb.k === "nat") return wa.n === wb.n;
 	if (wa.k === "app" && wb.k === "app") {
 		return defeq(globals, wa.fn, wb.fn) && defeq(globals, wa.arg, wb.arg);
 	}
@@ -360,6 +415,11 @@ export function infer(globals: Globals, term: Term): Term {
 		}
 		case "bvar":
 			throw new Error(`internal error: unbound variable`);
+		case "nat": {
+			const name = lang_info(globals).nat;
+			if (!name) throw new Error(`a numeral needs an @lang(Nat) type in scope`);
+			return { k: "global", name };
+		}
 		case "app": {
 			const tf = whnf(globals, infer(globals, term.fn));
 			if (tf.k !== "pi") {
@@ -408,6 +468,7 @@ function elab_expr(globals: Globals, expr: Expr, env: Map<string, Term>): Term {
 		}
 		return { k: "global", name: expr.ident };
 	}
+	if (expr.type === "nat_lit") return { k: "nat", n: expr.value };
 	if (expr.type === "application") {
 		return {
 			k: "app",
@@ -605,6 +666,105 @@ function spine(expr: Expr): { head: string; args: Expr[] } {
 
 const MARKERS = ["axiom", "inductive", "intro", "rec"];
 
+// @lang(Nat) needs the constructors it names, in @intro order: a
+// zero-argument one first, then a second whose only field is - directly,
+// not behind a further binder - the type itself. That is exactly a Peano
+// numeral's shape, which native `nat` values stand in for one layer at a
+// time.
+function validate_nat_ctor(
+	ind_name: string,
+	name: string,
+	ty: Term,
+	position: number,
+): "zero" | "succ" {
+	if (position === 1) {
+		const { locals } = open_pi(ty, Infinity);
+		if (locals.length !== 0) {
+			throw new Error(
+				`@lang(Nat): ${name} has to be the zero constructor, taking no arguments`,
+			);
+		}
+		return "zero";
+	}
+	if (position === 2) {
+		const { locals } = open_pi(ty, Infinity);
+		if (locals.length !== 1) {
+			throw new Error(`@lang(Nat): ${name} has to take exactly one ${ind_name} field`);
+		}
+		const field = locals[0] as Local;
+		const head = unwind(field.ty).head;
+		if (!(head.k === "global" && head.name === ind_name)) {
+			throw new Error(`@lang(Nat): ${name}'s field has to be ${ind_name} itself`);
+		}
+		return "succ";
+	}
+	throw new Error(`@lang(Nat): ${ind_name} may only have two constructors (zero and succ)`);
+}
+
+function occurs_in(name: string, t: Term): boolean {
+	switch (t.k) {
+		case "global":
+			return t.name === name;
+		case "app":
+			return occurs_in(name, t.fn) || occurs_in(name, t.arg);
+		case "pi":
+		case "lam":
+			return occurs_in(name, t.dom) || occurs_in(name, t.body);
+		case "local":
+			return occurs_in(name, t.ty);
+		default:
+			return false;
+	}
+}
+
+// A constructor argument may mention the type being declared only strictly
+// positively: either it is `ind_name ...` itself (whose own arguments then
+// may not mention ind_name again - no nested self-application), or a
+// function *into* one, whose domain never mentions ind_name at all.
+// Without this, an @intro like
+//
+//   Bad.intro : (Bad -> Bad) -> Bad;
+//
+// would type-check, and hand every declaration in the language the same
+// unsoundness a raw, unchecked axiom would: Bad would be inhabited (by
+// applying Bad.intro to itself) with no way for @rec to ever catch it,
+// which is exactly what marking a declaration @inductive is supposed to
+// rule out instead of merely assuming.
+function check_strictly_positive(ind_name: string, arg: Term): void {
+	if (!occurs_in(ind_name, arg)) return;
+	if (arg.k === "pi") {
+		if (occurs_in(ind_name, arg.dom)) {
+			throw new Error(
+				`${ind_name} appears to the left of an arrow in a constructor argument, which is not strictly positive`,
+			);
+		}
+		check_strictly_positive(ind_name, arg.body);
+		return;
+	}
+	const { head, args } = unwind(arg);
+	if (head.k === "global" && head.name === ind_name) {
+		for (const a of args) {
+			if (occurs_in(ind_name, a)) {
+				throw new Error(`${ind_name} appears inside its own arguments, which is not strictly positive`);
+			}
+		}
+		return;
+	}
+	throw new Error(
+		`${ind_name} appears in a constructor argument in a position that is not strictly positive`,
+	);
+}
+
+// Walks a constructor's own leading binders (not the final conclusion the
+// loop stops at, which is `ind_name` itself and is not an argument).
+function check_ctor_positivity(ind_name: string, ty: Term): void {
+	let cur = ty;
+	while (cur.k === "pi") {
+		check_strictly_positive(ind_name, cur.dom);
+		cur = cur.body;
+	}
+}
+
 function check_decl(
 	globals: Globals,
 	stmt: Statement,
@@ -613,7 +773,11 @@ function check_decl(
 	const name = (stmt.pat as Expr & { type: "ident" }).ident;
 	if (globals.has(name)) throw new Error(`${name} already defined`);
 
-	const directives = stmt.directives;
+	// @lang is an extra annotation rather than an alternative marker: it only
+	// ever rides along with @inductive, so it is counted separately from the
+	// "exactly one marker" rule below.
+	const lang_directive = stmt.directives.find((d) => d.name === "lang") ?? null;
+	const directives = stmt.directives.filter((d) => d.name !== "lang");
 	const require_markers = opts.require_markers ?? true;
 
 	if (directives.length > 1) {
@@ -643,6 +807,12 @@ function check_decl(
 			);
 		}
 	}
+	if (lang_directive !== null && marker?.name !== "inductive") {
+		throw new Error(`@lang(${lang_directive.arg}) may only mark an @inductive declaration`);
+	}
+	if (lang_directive !== null && lang_directive.arg !== "Nat") {
+		throw new Error(`@lang only supports Nat, not ${lang_directive.arg}`);
+	}
 
 	const env = new Map<string, Term>();
 	const ty_term = elab_expr(globals, stmt.ty, env);
@@ -660,6 +830,13 @@ function check_decl(
 	if (marker?.name === "inductive") {
 		g.is_inductive = true;
 		g.ctors = [];
+		if (lang_directive !== null) {
+			const info = lang_info(globals);
+			if (info.nat !== undefined) {
+				throw new Error(`@lang(Nat) is already ${info.nat}`);
+			}
+			info.nat = name;
+		}
 	} else if (marker?.name === "intro") {
 		const ind_name = marker.arg;
 		if (ind_name === null) {
@@ -674,8 +851,12 @@ function check_decl(
 		if (!(head.k === "global" && head.name === ind_name)) {
 			throw new Error(`${name} does not conclude in ${ind_name}`);
 		}
+		check_ctor_positivity(ind_name, ty_term);
 		g.ctor_of = ind_name;
 		ind.ctors!.push(name);
+		if (lang_info(globals).nat === ind_name) {
+			g.lang_role = validate_nat_ctor(ind_name, name, ty_term, ind.ctors!.length);
+		}
 	} else if (marker?.name === "rec") {
 		const ind_name = marker.arg;
 		if (ind_name === null) {
