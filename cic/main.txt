@@ -16,3 +16,4 @@
 @require "rational.txt"
 @require "string.txt"
 @require "option.txt"
+@require "fsm.txt"

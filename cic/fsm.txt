@@ -1,0 +1,47 @@
+@require "set.txt"
+
+// a DFSM is a 5-tuple
+// Alphabet - the type of symbols
+// State - the type of states
+// initial_state : State;
+// transition : (_ : State) -> (_ : Alphabet) -> State;
+// final : a subset of State
+
+@inductive
+FSM : (Alphabet : Type) -> (State : Type) -> Type;
+
+@intro(FSM)
+FSM.intro : (Alphabet : Type) -> (State : Type) -> (initial_state : State) ->
+	(transition : (s : State) -> (c : Alphabet) -> State) ->
+	(final : Set State) -> FSM Alphabet State;
+
+@rec(FSM)
+FSM.rec :
+	(Alphabet : Type) ->
+	(State : Type) ->
+	(motive : FSM Alphabet State -> Type) ->
+	(case_intro :
+		(initial_state : State) -> (transition : 
+			(s : State) -> (c : Alphabet) -> State
+		) -> (final : Set State) -> motive (FSM.intro Alphabet State initial_state transition final)
+	) ->
+	(target : FSM Alphabet State)
+	-> motive target;
+
+@iota(FSM)
+FSM.rec Alphabet State motive case_intro (FSM.intro Alphabet State initial_state transition final) :
+	motive (FSM.intro Alphabet State initial_state transition final) := case_intro initial_state transition final;
+
+FSM.step : (Alphabet : Type) -> (State : Type) ->
+	( machine : FSM Alphabet State) -> (next_input : Alphabet) -> FSM Alphabet State :=
+	// this is super easy, expand all the inputs by eliminating FSM, then apply the current state and next_input on the transition. You get back a new state, which becomes the initial_state of the next FSM
+	(Alphabet : Type) => (State : Type) => (machine : FSM Alphabet State) => (next_input : Alphabet) =>
+	FSM.rec Alphabet State (FSM Alphabet State => FSM Alphabet State) (
+		(initial_state : State) => (transition : 
+			(s : State) -> (c : Alphabet) -> State
+		) => (final : Set State) => 
+		FSM.intro Alphabet State (transition initial_state next_input) transition final
+	) machine;
+
+// nah i'm too lazy
+// FSM.run : (Alphabet : Type) -> (State : Type) -> (machine : FSM Alphabet State) -> (tape : List Alphabet) -> State;

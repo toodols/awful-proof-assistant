@@ -5,3 +5,4 @@
 @require "constructions.txt"
 @require "classical.txt"
 @require "ordinal.txt"
+@require "omega.txt"

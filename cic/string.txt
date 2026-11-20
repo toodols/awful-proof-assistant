@@ -161,4 +161,4 @@ String.nil : String := List.nil Char;
 String.cons : Char -> String -> String := List.cons Char;
 
 @debug
-hi : String := List.join Char "Hello" (String.cons (Char.of_nat 32) String.nil);
+hi : String := List.join Char "Hello" (String.cons (Char.of_nat 99999999) String.nil);
